@@ -1,0 +1,27 @@
+{
+  "name": "traceforge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TraceForge — local-first audit workflow & analytics builder",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @traceforge/domain -w @traceforge/tabular-engine -w @traceforge/workflow-engine -w @traceforge/llm-gateway -w @traceforge/evidence -w @traceforge/api -w @traceforge/web",
+    "test": "vitest run",
+    "dev:api": "npm run dev -w @traceforge/api",
+    "dev:web": "npm run dev -w @traceforge/web",
+    "start": "npm run start -w @traceforge/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

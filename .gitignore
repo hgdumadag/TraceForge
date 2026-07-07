@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.traceforge/
+apps/api/data/
+apps/web/dist/
+*.log
+.DS_Store

@@ -1,0 +1,21 @@
+{
+  "name": "@traceforge/tabular-engine",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@traceforge/domain": "*",
+    "@duckdb/node-api": "1.5.4-r.1",
+    "xlsx": "^0.18.5"
+  }
+}

@@ -1,0 +1,66 @@
+# TraceForge — Local-First Audit Workflow & Analytics Builder
+
+TraceForge lets auditors build, run, verify, and reuse audit analytics workflows on a visual canvas — entirely on the local machine. Data never leaves your computer unless you explicitly opt into a cloud LLM provider.
+
+## Quick start
+
+Requirements: **Node.js ≥ 22.13** (uses the built-in `node:sqlite`), optionally **Python 3** for the Python node and **[Ollama](https://ollama.com)** for local AI assist.
+
+```bash
+npm install
+npm run build
+npm start          # → http://127.0.0.1:4823
+```
+
+Open http://127.0.0.1:4823. The app seeds five built-in audit templates and five offline sample datasets on first boot.
+
+For development (hot reload):
+
+```bash
+npm run dev:api    # API on :4823
+npm run dev:web    # Vite dev server on :5173 (proxies /api)
+```
+
+Run tests:
+
+```bash
+npm test           # 119 tests: unit, fixture, integration (full MVP lifecycle)
+```
+
+## What's inside
+
+| Path | Purpose |
+|---|---|
+| `packages/domain` | Shared schemas (zod), version/status rules, node type registry, safe expression language (parser → validator → DuckDB SQL compiler) |
+| `packages/tabular-engine` | DuckDB runtime: CSV/Excel/JSON/Parquet import with SHA-256 fingerprints, all transform nodes, previews, profiling, export; isolated Python node runner |
+| `packages/workflow-engine` | DAG validation, topological execution, node status events, cancellation; queue abstraction (in-process for MVP) |
+| `packages/llm-gateway` | Provider-agnostic LLM gateway: Ollama (default), OpenAI, Azure AI Foundry, mock; secret redaction; schema-validated structured output |
+| `packages/evidence` | Deterministic, hashed, secret-free evidence packages (JSON + Markdown) |
+| `apps/api` | Fastify server (localhost-only), SQLite metadata store with migrations, execution service with SSE streaming, encrypted credential vault, built-in templates + samples |
+| `apps/web` | React + React Flow UI: catalog, template library, canvas builder with schema-driven node config, data previews, run history, versioning, verification, publish, settings |
+
+## Core concepts
+
+- **Workflows** have immutable **versions**: `draft → in_review → verified → active` (edits to non-drafts create a new draft).
+- **Verification** requires a tester, reviewer, and a successful sample run before a Pass decision; verified versions are immutable.
+- Only **verified** versions can be **activated** or **published to the toolkit**.
+- Every run stores **evidence**: parameters, input/output dataset fingerprints (SHA-256), node results, logs (secret-redacted), and LLM usage metadata — exportable as JSON or Markdown with a stable evidence hash.
+- **Archive-first deletion**: hard delete only works for never-run, never-verified drafts.
+- **Expressions** like `{Amount in USD} > {param!receipt_threshold} and is_null({Receipt ID})` compile to safe DuckDB SQL — no eval, no host access.
+
+## Data & security defaults
+
+- Server binds to `127.0.0.1` only (`TRACEFORGE_HOST`/`TRACEFORGE_PORT` to override — remote use requires TLS + auth in front).
+- Metadata in SQLite (`data/traceforge.db`); dataset snapshots as Parquet under `data/datasets/` (`TRACEFORGE_DATA_DIR` to relocate).
+- LLM API keys are AES-256-GCM encrypted in the local vault; secrets never appear in workflow JSON, logs, or evidence.
+- Python nodes run in an isolated `python3 -I` process with a minimal environment.
+- The Import from API node blocks localhost/private-network targets (SSRF guard) and is clearly marked as requiring Internet.
+- Ollama is the default LLM provider; cloud providers require explicit configuration and explicit selection per action.
+
+## Known limitations (MVP)
+
+- Single local user (tester/reviewer identities are recorded as text).
+- Credential-based API imports are stubbed pending the full credential UI.
+- Charts render as aggregated tables (no graphical chart canvas yet).
+- Node's `node:sqlite` prints an "experimental" warning on boot — harmless.
+- Tauri desktop packaging and team/server mode are deferred per ADR-003.

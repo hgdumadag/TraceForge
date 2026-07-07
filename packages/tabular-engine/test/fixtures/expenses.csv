@@ -1,0 +1,9 @@
+Expense ID,Employee ID,Employee Name,Description,Amount in USD,Date Expense Incurred,Approval Date,Approver ID,Receipt ID
+E001,EMP01,Alice Reyes,Team dinner,250.00,2026-01-05,2026-01-10,MGR01,R100
+E002,EMP02,Ben Cruz,Hotel - conference,1200.50,2026-01-06,2026-03-20,MGR01,R101
+E003,EMP01,Alice Reyes,Taxi,45.25,2026-01-07,2026-01-08,MGR02,
+E004,EMP03,Carla Santos,Client gifts and alcohol,530.00,2026-01-08,2026-01-09,MGR02,R103
+E005,EMP02,Ben Cruz,Hotel - conference,1200.50,2026-01-06,2026-03-20,MGR01,R101
+E006,EMP04,Dan Lim,Office supplies,80.00,2026-01-10,2026-01-12,MGR03,R105
+E007,EMP05,Eva Tan,Flight to Manila,950.75,2026-01-11,2026-01-15,MGR01,
+E008,EMP03,Carla Santos,Conference registration,400.00,2026-01-12,2026-01-13,MGR02,R107
