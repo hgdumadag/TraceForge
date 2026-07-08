@@ -251,3 +251,25 @@ ul.plain { list-style: none; padding: 0; margin: 6px 0; }
 ul.plain li { padding: 3px 0; }
 .empty { text-align: center; color: var(--text-dim); padding: 40px 20px; }
 .chip { display: inline-block; background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 1px 8px; font-size: 11px; margin-right: 4px; color: var(--text-dim); }
+
+/* User guide */
+.guide-layout { display: flex; gap: 24px; align-items: flex-start; }
+.guide-toc {
+  position: sticky; top: 20px; width: 200px; flex-shrink: 0;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px; max-height: calc(100vh - 60px); overflow-y: auto;
+}
+.guide-toc h3 { margin: 4px 8px 8px; }
+.guide-body { flex: 1; min-width: 0; max-width: 900px; }
+.guide-body section { margin-bottom: 30px; scroll-margin-top: 16px; }
+.guide-body h2 { border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.guide-body ul, .guide-body ol { padding-left: 22px; }
+.guide-body li { margin: 5px 0; line-height: 1.5; }
+.guide-steps li { margin: 8px 0; }
+.guide-code {
+  background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 4px;
+  padding: 1px 5px; font-size: 12px; white-space: nowrap;
+}
+.guide-expr { white-space: pre-wrap; color: var(--accent); font-size: 12px; }
+.guide-body .kv { grid-template-columns: 230px 1fr; row-gap: 8px; }
+.guide-body .kv dt { font-weight: 600; color: var(--text); }

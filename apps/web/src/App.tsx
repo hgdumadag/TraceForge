@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CatalogPage, TemplatesPage, DatasetsPage, ToolkitPage, SettingsPage } from "./pages";
 import { WorkflowPage } from "./workflow";
+import { GuidePage } from "./guide";
 import { useTheme, toggleTheme } from "./theme";
 
 function useHashRoute(): [string, (h: string) => void] {
@@ -49,7 +50,8 @@ export default function App() {
     { hash: "#/templates", label: "Templates" },
     { hash: "#/datasets", label: "Datasets" },
     { hash: "#/toolkit", label: "Toolkit" },
-    { hash: "#/settings", label: "Settings" }
+    { hash: "#/settings", label: "Settings" },
+    { hash: "#/guide", label: "Guide" }
   ];
 
   return (
@@ -93,6 +95,8 @@ export default function App() {
           <ToolkitPage navigate={navigate} />
         ) : hash === "#/settings" ? (
           <SettingsPage />
+        ) : hash === "#/guide" ? (
+          <GuidePage />
         ) : (
           <CatalogPage navigate={navigate} />
         )}
