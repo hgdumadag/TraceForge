@@ -6,3 +6,7 @@ apps/api/data/
 apps/web/dist/
 *.log
 .DS_Store
+
+.e2e-data/
+test-results/
+playwright-report/
