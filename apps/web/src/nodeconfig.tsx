@@ -583,7 +583,12 @@ function NodeForm(props: FormProps & { nodeType: string }) {
           <div className="row">
             <Field label="Chart type">
               <select value={cfg.chartType ?? "bar"} onChange={(e) => set({ chartType: e.target.value })}>
-                <option>bar</option><option>line</option><option>pie</option>
+                <option value="bar">Bar</option>
+                <option value="horizontal_bar">Horizontal bar</option>
+                <option value="line">Line</option>
+                <option value="area">Area</option>
+                <option value="pie">Pie</option>
+                <option value="donut">Donut</option>
               </select>
             </Field>
             <Field label="Aggregate">
@@ -593,9 +598,13 @@ function NodeForm(props: FormProps & { nodeType: string }) {
             </Field>
           </div>
           <div className="row">
-            <Field label="Dimension"><ColumnInput value={cfg.dimension ?? ""} onChange={(v) => set({ dimension: v })} columns={columns} /></Field>
-            <Field label="Measure"><ColumnInput value={cfg.measure ?? ""} onChange={(v) => set({ measure: v })} columns={columns} /></Field>
+            <Field label="Dimension" hint="categories / x-axis"><ColumnInput value={cfg.dimension ?? ""} onChange={(v) => set({ dimension: v })} columns={columns} /></Field>
+            <Field label="Measure" hint="numeric value"><ColumnInput value={cfg.measure ?? ""} onChange={(v) => set({ measure: v })} columns={columns} /></Field>
           </div>
+          <Field label="Top N categories (optional)" hint="keeps the largest N by value; line/area keep dimension order">
+            <input type="number" min={1} value={cfg.topN ?? ""} onChange={(e) => set({ topN: e.target.value ? Number(e.target.value) : undefined })} />
+          </Field>
+          <div className="info-box">After a run, select this node and open <b>Preview: output</b> — the chart renders above the aggregated table.</div>
         </>
       );
     case "publish_toolkit":

@@ -273,3 +273,7 @@ ul.plain li { padding: 3px 0; }
 .guide-expr { white-space: pre-wrap; color: var(--accent); font-size: 12px; }
 .guide-body .kv { grid-template-columns: 230px 1fr; row-gap: 8px; }
 .guide-body .kv dt { font-weight: 600; color: var(--text); }
+
+/* Chart node rendering */
+.chart-view { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; }
+.chart-svg { width: 100%; height: auto; display: block; }

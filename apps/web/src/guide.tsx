@@ -107,7 +107,7 @@ const NODE_NOTES: Record<string, { usesExpressions?: boolean; how: ReactNode; sa
   python: {
     how: <>For logic the built-in nodes can't express. Your code runs in an <b>isolated process</b>, receives the input table as <Code>rows</Code> (a list of dicts), and must leave the transformed list in <Code>rows</Code>. Example: <Code>rows = [r for r in rows if float(r["Amount"] or 0) &gt; 100]</Code></>
   },
-  chart: { how: <>Aggregates a measure by a dimension and outputs the summarized table (rendered as a table in this release).</> },
+  chart: { how: <>Aggregates a measure by a dimension and renders it as a chart in the output preview — bar, horizontal bar, line, area, pie, or donut. Use <b>Top N</b> to keep large category sets readable. The aggregated table sits below the chart and exports like any other output.</> },
   publish_toolkit: { how: <>Marks a branch's output as the toolkit deliverable. Actual publishing happens from the <b>Versions</b> tab once the version is verified.</> },
   llm_chat: { how: <>Ask the configured LLM a question mid-workflow. Optionally share the input's <i>schema</i> (column names/types only — never rows). Output is a one-row table with the response.</> },
   explain_expression: { how: <>Asks the LLM to explain an expression in plain language — useful for documenting inherited workflows.</> },

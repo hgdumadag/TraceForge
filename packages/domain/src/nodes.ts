@@ -189,11 +189,16 @@ const pythonConfig = z.object({
   timeoutMs: z.number().int().positive().max(300000).default(60000)
 });
 
+export const CHART_TYPES = ["bar", "horizontal_bar", "line", "area", "pie", "donut"] as const;
+export type ChartType = (typeof CHART_TYPES)[number];
+
 const chartConfig = z.object({
-  chartType: z.enum(["bar", "line", "pie"]).default("bar"),
+  chartType: z.enum(CHART_TYPES).default("bar"),
   dimension: z.string().min(1),
   measure: z.string().min(1),
-  aggregate: z.enum(["sum", "count", "min", "max", "avg"]).default("sum")
+  aggregate: z.enum(["sum", "count", "min", "max", "avg"]).default("sum"),
+  /** Keep only the top N categories by value (bar/pie readability). */
+  topN: z.number().int().positive().max(500).optional()
 });
 
 const publishToolkitConfig = z.object({

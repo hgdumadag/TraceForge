@@ -119,7 +119,7 @@ function CanvasTab({
   const [execution, setExecution] = useState<any>(null);
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
   const [nodeOutputs, setNodeOutputs] = useState<Record<string, Record<string, string>>>({});
-  const [previewDsv, setPreviewDsv] = useState<{ id: string; label: string } | null>(null);
+  const [previewDsv, setPreviewDsv] = useState<{ id: string; label: string; chartType?: string } | null>(null);
   const [upstreamCols, setUpstreamCols] = useState<Record<string, string>>({});
   const sseClose = useRef<(() => void) | null>(null);
 
@@ -448,7 +448,21 @@ function CanvasTab({
                 <div style={{ marginTop: 14 }}>
                   <h3>Last run outputs</h3>
                   {Object.entries(selectedOutputs).map(([handle, dsvId]) => (
-                    <button key={handle} className="small" style={{ marginRight: 6, marginBottom: 6 }} onClick={() => setPreviewDsv({ id: dsvId, label: `${(selectedNode.data as any).label} → ${handle}` })}>
+                    <button
+                      key={handle}
+                      className="small"
+                      style={{ marginRight: 6, marginBottom: 6 }}
+                      onClick={() =>
+                        setPreviewDsv({
+                          id: dsvId,
+                          label: `${(selectedNode.data as any).label} → ${handle}`,
+                          chartType:
+                            (selectedNode.data as any).nodeType === "chart"
+                              ? ((selectedNode.data as any).config?.chartType ?? "bar")
+                              : undefined
+                        })
+                      }
+                    >
                       Preview: {handle}
                     </button>
                   ))}
@@ -471,7 +485,7 @@ function CanvasTab({
             <h3 style={{ margin: 0 }}>{previewDsv.label}</h3>
             <button className="ghost small" style={{ flex: "0 0 auto" }} onClick={() => setPreviewDsv(null)}>Close</button>
           </div>
-          <DataPreview datasetVersionId={previewDsv.id} />
+          <DataPreview datasetVersionId={previewDsv.id} chartType={previewDsv.chartType} />
         </div>
       )}
       {runOpen && (

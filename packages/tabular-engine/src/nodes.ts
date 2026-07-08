@@ -311,9 +311,20 @@ export function buildNodeSql(ctx: TabularNodeContext): Record<string, string> {
       const input = single(ctx, "input");
       requireColumns(input, [cfg.dimension, cfg.measure], ctx.nodeLabel);
       const agg = AGGREGATES[cfg.aggregate ?? "sum"](qi(cfg.measure));
-      return {
-        output: `SELECT ${qi(cfg.dimension)} AS "Dimension", ${agg} AS "Value" FROM ${parquetSource(input.path)} GROUP BY ${qi(cfg.dimension)} ORDER BY 2 DESC`
-      };
+      // Line/area charts read as sequences: order by the dimension (e.g. dates).
+      // Categorical charts (bar/pie/donut) order by value, largest first.
+      const sequential = cfg.chartType === "line" || cfg.chartType === "area";
+      const base = `SELECT ${qi(cfg.dimension)} AS "Dimension", ${agg} AS "Value" FROM ${parquetSource(input.path)} GROUP BY ${qi(cfg.dimension)}`;
+      const topN = cfg.topN ? Number(cfg.topN) : null;
+      if (sequential) {
+        // Top-N for sequences still means "largest values", but the result stays in dimension order.
+        return {
+          output: topN
+            ? `SELECT * FROM (${base} ORDER BY 2 DESC LIMIT ${topN}) ORDER BY 1 ASC`
+            : `${base} ORDER BY 1 ASC`
+        };
+      }
+      return { output: `${base} ORDER BY 2 DESC${topN ? ` LIMIT ${topN}` : ""}` };
     }
     default:
       throw new NodeExecutionError(`Node type "${ctx.nodeType}" is not a tabular transform.`);

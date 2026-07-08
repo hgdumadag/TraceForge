@@ -74,7 +74,6 @@ To back up, stop the app and copy the whole data folder; to restore or move mach
 
 - Single local user (tester/reviewer identities are recorded as text).
 - Credential-based API imports are stubbed pending the full credential UI.
-- Charts render as aggregated tables (no graphical chart canvas yet).
 - Node's `node:sqlite` prints an "experimental" warning on boot — harmless.
 - Tauri desktop packaging and team/server mode are deferred per ADR-003.
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "./api";
+import { ChartView } from "./chart";
 
 export function Badge({ status }: { status: string }) {
   return <span className={`badge ${status}`}>{status.replace(/_/g, " ")}</span>;
@@ -37,8 +38,9 @@ export function duration(start: string | null | undefined, end: string | null | 
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-/** Read-only data preview grid for a dataset version (features/data-preview.md). */
-export function DataPreview({ datasetVersionId, rows: limit = 100 }: { datasetVersionId: string; rows?: number }) {
+/** Read-only data preview grid for a dataset version (features/data-preview.md).
+ * When `chartType` is set (Chart node outputs), the chart renders above the table. */
+export function DataPreview({ datasetVersionId, rows: limit = 100, chartType }: { datasetVersionId: string; rows?: number; chartType?: string }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any[] | null>(null);
@@ -58,6 +60,7 @@ export function DataPreview({ datasetVersionId, rows: limit = 100 }: { datasetVe
 
   return (
     <div>
+      {chartType && <ChartView chartType={chartType} rows={data.rows} />}
       <div className="row small dim" style={{ margin: "6px 0", justifyContent: "space-between" }}>
         <span style={{ flex: "0 0 auto" }}>
           {data.totalRows} rows total — showing first {Math.min(limit, data.totalRows)}
