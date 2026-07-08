@@ -366,8 +366,10 @@ function CanvasTab({
           <button
             onClick={async () => {
               const draft = await api.post<any>(`/api/versions/${version.id}/draft`);
-              onVersionChanged();
-              navigateVersion(draft.id);
+              // Refresh the version list BEFORE navigating; firing both
+              // concurrently lets the stale reload overwrite the selection.
+              await onVersionChanged();
+              await navigateVersion(draft.id);
             }}
           >
             Create draft from v{version.versionNumber}
@@ -738,8 +740,12 @@ function VerificationTab({ version, datasets, onChanged }: { version: VersionRow
   const [error, setError] = useState<string | null>(null);
   const [sampleOpen, setSampleOpen] = useState(false);
   const [sampleExec, setSampleExec] = useState<any>(null);
+  // Render the form only after the stored review is loaded; otherwise the
+  // async fetch can resolve mid-edit and wipe what the user just typed.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     api.get<any>(`/api/versions/${version.id}/verification`).then((r) => {
       setReview(r);
       if (r) {
@@ -748,7 +754,7 @@ function VerificationTab({ version, datasets, onChanged }: { version: VersionRow
         setTesting(r.testingPerformed ?? "");
         if (r.sampleExecutionId) api.get<any>(`/api/executions/${r.sampleExecutionId}`).then((d) => setSampleExec(d.execution)).catch(() => {});
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [version.id]);
 
   const saveDetails = () =>
@@ -769,6 +775,8 @@ function VerificationTab({ version, datasets, onChanged }: { version: VersionRow
       </div>
     );
   }
+
+  if (loading) return <div className="dim small">Loading verification record…</div>;
 
   return (
     <div style={{ maxWidth: 780 }}>
