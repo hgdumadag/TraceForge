@@ -39,7 +39,7 @@ npm run build && npx playwright install chromium && npm run test:e2e
 | `packages/llm-gateway` | Provider-agnostic LLM gateway: Ollama (default), OpenAI, Azure AI Foundry, mock; secret redaction; schema-validated structured output |
 | `packages/evidence` | Deterministic, hashed, secret-free evidence packages (JSON + Markdown) |
 | `apps/api` | Fastify server (localhost-only), SQLite metadata store with migrations, execution service with SSE streaming, encrypted credential vault, built-in templates + samples |
-| `apps/web` | React + React Flow UI: catalog, template library, canvas builder with schema-driven node config, data previews, run history, versioning, verification, publish, settings |
+| `apps/web` | React + React Flow UI: catalog, template library, canvas builder with schema-driven node config, data previews with SVG charts (bar, horizontal bar, line, area, pie, donut), run history, versioning, verification, publish, settings, light/dark theme, and an in-app user guide with expression samples |
 
 ## Core concepts
 

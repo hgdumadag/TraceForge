@@ -93,6 +93,10 @@ The list of past workflow runs, including status, timing, parameters, outputs, l
 
 Permanent deletion of records. This is allowed only for safe drafts with no executions, verified versions, published tools, or audit evidence.
 
+## In review
+
+The workflow version status while a submitted draft is being verified. The version is locked; the reviewer can pass it (verified), fail it (rejected), or send it back to draft with amendment comments. Canonical machine value: `in_review` (ADR-013).
+
 ## LLM gateway
 
 The provider-agnostic service that routes AI requests to Ollama, OpenAI, Azure AI Foundry, or a mock provider.
@@ -129,9 +133,17 @@ A person who reviews and approves or rejects a workflow version after testing.
 
 A user who runs an approved workflow by providing inputs and parameters, without necessarily editing the workflow logic.
 
+## Rejected version
+
+A workflow version that failed verification. It cannot be activated or published; a new draft must be created to continue work.
+
 ## Soft delete
 
 Another name for archive. It removes an item from normal use without physically deleting audit-relevant records.
+
+## Superseded version
+
+A former active version replaced when a newer verified version was activated. It stays immutable and its run history and evidence remain accessible (ADR-013).
 
 ## Template
 

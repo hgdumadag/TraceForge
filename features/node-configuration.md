@@ -139,8 +139,12 @@ Acceptance criteria:
 
 ## 4.8 Chart
 
-- User selects chart type, dimensions, and measures.
-- MVP charts are local preview only, not dashboard publishing.
+- User selects chart type, dimension (categories/x-axis), measure (numeric value), and aggregate (sum, count, min, max, avg).
+- Chart types: bar, horizontal bar, line, area, pie, donut.
+- Optional Top N keeps only the largest N categories by value.
+- Ordering: line/area outputs are ordered by dimension (sequences read left to right, e.g. dates); categorical charts are ordered by value, largest first. Top N on sequences selects the largest values but preserves dimension order.
+- The output preview renders the chart (dependency-free SVG, theme-aware) above the aggregated `Dimension`/`Value` table; the table exports like any other output.
+- Charts are local preview only, not dashboard publishing.
 
 # 5. Node schema minimum
 

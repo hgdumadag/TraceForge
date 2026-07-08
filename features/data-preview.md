@@ -61,6 +61,7 @@ Acceptance criteria:
 - Preview shows output table name, row count, columns, types, and sample rows.
 - If node has multiple outputs, user can select which output to preview.
 - Failed node shows error instead of stale preview.
+- Chart node outputs render the configured chart (SVG) above the aggregated table in the same preview.
 
 ## 2.3 Profile columns
 

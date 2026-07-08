@@ -84,7 +84,7 @@ Support:
 - Boolean: `and`, `or`, `not`.
 - Arithmetic: `+`, `-`, `*`, `/` where types allow.
 - Text contains: `contains`.
-- Membership: `in` optional for MVP.
+- Membership: `in` / `not in` with a literal list, e.g. `{Department} in ("Finance", "Treasury")`.
 
 ## 2.5 Functions
 
@@ -99,6 +99,9 @@ MVP functions:
 - `days_between(date1, date2)`.
 - `date(text)`.
 - `coalesce(value1, value2)`.
+- `abs(number)`.
+- `round(number, places)`.
+- `length(text)`.
 
 # 3. Acceptance criteria
 

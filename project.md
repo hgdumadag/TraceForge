@@ -182,7 +182,7 @@ The app may be launched in one of three modes:
 | Server/API | TypeScript, Fastify or NestJS | Must expose local REST and streaming endpoints. |
 | Workflow engine | TypeScript package | Shared schemas with UI and backend. |
 | Tabular engine | DuckDB + Arrow/Parquet | Use for file import, joins, filters, pivots, and previews. |
-| Local metadata DB | SQLite initially, PGLite or PostgreSQL optional | Use migrations from day one. |
+| Local metadata DB | SQLite via Node's built-in `node:sqlite` (ADR-014); PGLite or PostgreSQL optional later | Use migrations from day one. No native build toolchain required. |
 | Queue | Local in-process or SQLite-backed queue for MVP; Redis/BullMQ adapter later | Keep queue interface abstract. |
 | Python support | Isolated Python process | Never run arbitrary Python inside the main app process. |
 | Secrets | Encrypted local vault + OS keychain where possible | Store references in workflow JSON, not raw secrets. |
@@ -324,11 +324,14 @@ Workflow changes create draft versions. A version becomes active only after veri
 Version states:
 
 - `draft`
-- `ready_for_review`
+- `in_review`
 - `verified`
 - `rejected`
 - `active`
+- `superseded`
 - `archived`
+
+This is the canonical status vocabulary (see ADR-013). `in_review` replaces the earlier `ready_for_review` name; `superseded` is a former active version replaced by a newer activation.
 
 Verification must capture:
 
