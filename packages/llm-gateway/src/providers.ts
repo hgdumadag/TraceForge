@@ -24,7 +24,7 @@ async function fetchJson(
     const res = await fetch(url, { ...init, signal: controller.signal });
     if (!res.ok) {
       // Do not leak response bodies that may echo credentials.
-      throw new LlmProviderError(`Provider request failed with status ${res.status}.`, providerId);
+      throw new LlmProviderError(`Provider request failed with status ${res.status}.`, providerId, res.status);
     }
     return await res.json();
   } catch (e) {
@@ -34,6 +34,44 @@ async function fetchJson(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// --- Health checks ----------------------------------------------------------
+// "Check" sends a real one-line test prompt so a green result means the model
+// actually responds — not merely that settings are filled in. The prompt contains
+// no user data; for cloud providers the user's click on Check is the explicit
+// opt-in required by project.md §8.5.
+
+const HEALTH_PROMPT: LlmChatRequest = {
+  messages: [{ role: "user", content: "Reply with only the word OK." }],
+  maxTokens: 10
+};
+
+async function testChat(provider: LlmProvider): Promise<{ ok: true; detail: string }> {
+  const start = Date.now();
+  const res = await provider.chat(HEALTH_PROMPT);
+  return { ok: true, detail: `Model ${res.model} responded in ${Date.now() - start}ms.` };
+}
+
+/** Map a failed test call to guidance the user can act on. Status codes are safe
+ * to interpret; response bodies are never read (they may echo credentials). */
+function healthFailure(
+  e: unknown,
+  ctx: { auth: string; notFound: string; reach: string }
+): { ok: false; detail: string } {
+  const status = e instanceof LlmProviderError ? e.status : undefined;
+  if (status === 401 || status === 403) {
+    return { ok: false, detail: `Authentication failed (${status}). ${ctx.auth}` };
+  }
+  if (status === 404) return { ok: false, detail: `Not found (404). ${ctx.notFound}` };
+  if (status === 429) {
+    return { ok: false, detail: "Rate limited or out of quota (429). Wait and retry, or review your plan and quota." };
+  }
+  if (status && status >= 500) {
+    return { ok: false, detail: `The provider returned a server error (${status}). The service is having problems — try again later.` };
+  }
+  const base = e instanceof Error ? e.message : "Request failed.";
+  return { ok: false, detail: `${base} ${ctx.reach}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -98,11 +136,29 @@ export class OllamaProvider implements LlmProvider {
   }
 
   async healthCheck(): Promise<{ ok: boolean; detail: string }> {
+    let models: string[];
     try {
-      const models = await this.listModels();
-      return { ok: true, detail: `Ollama reachable with ${models.length} model(s).` };
+      models = await this.listModels();
+    } catch {
+      return {
+        ok: false,
+        detail: `Cannot reach Ollama at ${this.baseUrl}. Start it with "ollama serve" (or install it from ollama.com), then check again.`
+      };
+    }
+    if (models.length > 0 && !models.some((m) => m === this.model || m.startsWith(`${this.model}:`))) {
+      return {
+        ok: false,
+        detail: `Ollama is running, but model "${this.model}" is not installed. Run "ollama pull ${this.model}", or set the model to one of: ${models.slice(0, 5).join(", ")}.`
+      };
+    }
+    try {
+      return await testChat(this);
     } catch (e) {
-      return { ok: false, detail: e instanceof Error ? e.message : "Ollama is unreachable." };
+      return healthFailure(e, {
+        auth: "Check the Ollama base URL — it should not require credentials.",
+        notFound: `Model "${this.model}" was not accepted. Run "ollama pull ${this.model}" and check again.`,
+        reach: "The model may still be loading (first use can be slow) — try again, or check the base URL."
+      });
     }
   }
 }
@@ -166,7 +222,15 @@ export class OpenAiProvider implements LlmProvider {
   }
 
   async healthCheck(): Promise<{ ok: boolean; detail: string }> {
-    return { ok: !!this.apiKey, detail: this.apiKey ? "API key configured." : "Missing API key." };
+    try {
+      return await testChat(this);
+    } catch (e) {
+      return healthFailure(e, {
+        auth: "The API key is invalid, revoked, or lacks access — re-enter it in this provider's settings.",
+        notFound: `Model "${this.model}" was not found. Check the model name and that your account has access to it.`,
+        reach: `Check the base URL (${this.baseUrl}) and your network/proxy settings.`
+      });
+    }
   }
 }
 
@@ -182,6 +246,14 @@ export class AzureFoundryProvider implements LlmProvider {
   private deployment: string;
   private apiVersion: string;
   private timeoutMs: number;
+  /**
+   * Azure AI Foundry hosts two different wire protocols under one brand:
+   *  - Azure OpenAI-style resources: api-key header, /openai/deployments/{d}/chat/completions.
+   *  - Foundry model-catalog deployments whose base URL ends in /anthropic/v1 (e.g. Claude in
+   *    Foundry): the Anthropic Messages API — x-api-key header, POST {baseUrl}/messages.
+   * The base URL shape is the only reliable signal available at config time.
+   */
+  private readonly anthropicMode: boolean;
 
   constructor(cfg: ProviderConfig) {
     if (!cfg.apiKey) throw new LlmProviderError("Azure AI Foundry provider requires an API key credential.", cfg.id);
@@ -190,12 +262,17 @@ export class AzureFoundryProvider implements LlmProvider {
     this.displayName = cfg.displayName || "Azure AI Foundry";
     this.baseUrl = cfg.baseUrl.replace(/\/$/, "");
     this.apiKey = cfg.apiKey;
-    this.deployment = cfg.deployment ?? cfg.model ?? "gpt-4o-mini";
+    this.anthropicMode = /\/anthropic\/v\d+$/.test(this.baseUrl);
+    this.deployment = cfg.deployment ?? cfg.model ?? (this.anthropicMode ? "claude-sonnet-5" : "gpt-4o-mini");
     this.apiVersion = cfg.apiVersion ?? "2024-08-01-preview";
     this.timeoutMs = cfg.timeoutMs ?? DEFAULT_TIMEOUT;
   }
 
   async chat(request: LlmChatRequest): Promise<LlmChatResponse> {
+    return this.anthropicMode ? this.chatAnthropic(request) : this.chatOpenAiCompat(request);
+  }
+
+  private async chatOpenAiCompat(request: LlmChatRequest): Promise<LlmChatResponse> {
     const start = Date.now();
     const body: Record<string, unknown> = {
       messages: request.messages,
@@ -222,12 +299,72 @@ export class AzureFoundryProvider implements LlmProvider {
     };
   }
 
+  /** Anthropic Messages API shape (https://docs.anthropic.com/en/api/messages), as exposed
+   * through Azure AI Foundry's Claude deployments. Structured JSON output (chatStructured in
+   * gateway.ts) is achieved by prompting for JSON text, not a native response_format param. */
+  private async chatAnthropic(request: LlmChatRequest): Promise<LlmChatResponse> {
+    const start = Date.now();
+    const system = request.messages
+      .filter((m) => m.role === "system")
+      .map((m) => m.content)
+      .join("\n\n");
+    const messages = request.messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role, content: m.content }));
+    const body: Record<string, unknown> = {
+      model: this.deployment,
+      max_tokens: request.maxTokens ?? 4096,
+      messages,
+      temperature: request.temperature ?? 0.2
+    };
+    if (system) body.system = system;
+    const json = await fetchJson(
+      `${this.baseUrl}/messages`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": this.apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify(body)
+      },
+      this.timeoutMs,
+      this.id
+    );
+    const text = Array.isArray(json?.content)
+      ? json.content.filter((b: any) => b?.type === "text").map((b: any) => b.text).join("")
+      : "";
+    return {
+      content: text,
+      model: json?.model ?? this.deployment,
+      usage: {
+        promptTokens: json?.usage?.input_tokens,
+        completionTokens: json?.usage?.output_tokens,
+        latencyMs: Date.now() - start
+      }
+    };
+  }
+
   async listModels(): Promise<string[]> {
     return [this.deployment];
   }
 
   async healthCheck(): Promise<{ ok: boolean; detail: string }> {
-    return { ok: true, detail: "Configured. Calls are made only when explicitly selected." };
+    try {
+      return await testChat(this);
+    } catch (e) {
+      return healthFailure(
+        e,
+        this.anthropicMode
+          ? {
+              auth: "The API key is invalid, or this resource does not have the Claude deployment enabled — re-copy the key from this resource in Azure AI Foundry.",
+              notFound: `Model "${this.deployment}" was not found at this endpoint. Check the model name matches the Claude deployment in Azure AI Foundry.`,
+              reach: `Check the endpoint URL (${this.baseUrl}) — it should end in /anthropic/v1 — and your network/proxy settings.`
+            }
+          : {
+              auth: "The API key is invalid or belongs to a different resource — copy it from the Azure portal for this endpoint.",
+              notFound: `Deployment "${this.deployment}" was not found. Verify the deployment name in Azure AI Foundry, the endpoint URL, and the API version (${this.apiVersion}).`,
+              reach: `Check the endpoint URL (${this.baseUrl}) — it should look like https://<resource>.openai.azure.com — and your network/proxy settings.`
+            }
+      );
+    }
   }
 }
 

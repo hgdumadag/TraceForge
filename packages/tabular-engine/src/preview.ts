@@ -1,5 +1,5 @@
 /** Read-only previews, profiling, and export (features/data-preview.md). */
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import * as XLSX from "xlsx";
 import type { DatasetColumn } from "@traceforge/domain";
@@ -87,5 +87,6 @@ export async function exportParquet(path: string, outPath: string, format: Expor
   const ws = XLSX.utils.json_to_sheet(rows, { header: data.columns.map((c) => c.name) });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Data");
-  XLSX.writeFile(wb, outPath);
+  // XLSX.writeFile is fs-bound and unwired in ESM builds; write the buffer ourselves.
+  await writeFile(outPath, XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer);
 }

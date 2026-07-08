@@ -129,7 +129,9 @@ const editColumnsConfig = z.object({
   edits: z.array(z.object({
     column: z.string().min(1),
     rename: z.string().optional(),
-    newType: columnType.optional()
+    newType: columnType.optional(),
+    /** strptime format for text → date/datetime conversions, e.g. "%Y%m%d" for 20260730. */
+    sourceFormat: z.string().optional()
   })).min(1)
 });
 

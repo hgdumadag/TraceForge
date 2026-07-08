@@ -78,8 +78,10 @@ Acceptance criteria:
 Acceptance criteria:
 
 - User can add note cards explaining audit purpose, criteria, or test rationale.
+- Note text is directly editable in place on the canvas (click into the note and type); editing is disabled on read-only (non-draft) versions.
+- Notes are resizable by dragging their selection handles; the resized size is saved with the note.
 - User can add group/section boxes around related nodes.
-- Notes and groups persist in version JSON.
+- Notes and groups persist in version JSON, including note size.
 - Notes and groups do not execute.
 
 ## 2.5 Navigate canvas
@@ -88,6 +90,15 @@ Acceptance criteria:
 
 - User can zoom, pan, fit-to-screen, and use minimap.
 - Canvas remains usable for at least 100 nodes in MVP testing.
+
+## 2.6 Maximize canvas space
+
+Acceptance criteria:
+
+- Entering the workflow editor (opening a workflow, whether newly created blank, cloned from a template/toolkit, or AI-drafted) automatically collapses the main navigation sidebar to give the canvas more room.
+- The sidebar has a toggle so the user can re-expand or collapse it manually at any time.
+- A manual expand is respected while editing: the app does not re-collapse the sidebar until the user enters a workflow editor view again (e.g. opens another workflow).
+- The right-hand Inspector panel defaults to collapsed when no node is selected (nothing to configure) and automatically expands the moment a node is selected. It has its own toggle so the user can collapse or expand it manually at any time; a manual collapse persists until a different node is selected or the selection is cleared. Collapsing does not discard unsaved edits in the currently open node's configuration — the panel stays mounted, just hidden.
 
 # 3. Canvas JSON shape
 

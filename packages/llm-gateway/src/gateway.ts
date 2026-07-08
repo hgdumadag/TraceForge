@@ -51,7 +51,12 @@ export class LlmGateway {
   registerProvider(cfg: ProviderConfig, makeDefault = false): LlmProvider {
     const provider = createProvider(cfg);
     this.providers.set(provider.id, provider);
-    if (makeDefault || (!this.defaultProviderId && provider.kind === "local")) {
+    // Cloud providers can never become the implicit default (project.md §8.5, ADR-008):
+    // the default is used whenever a caller omits providerId, and chat() below refuses
+    // to run a cloud provider without an explicit providerId — so a cloud "default"
+    // would always fail. A stale is_default=1 row on a cloud provider is ignored here
+    // rather than erroring, so old/bad config self-heals on reload.
+    if (provider.kind === "local" && (makeDefault || !this.defaultProviderId)) {
       this.defaultProviderId = provider.id;
     }
     return provider;
@@ -81,7 +86,10 @@ export class LlmGateway {
       return p;
     }
     if (!this.defaultProviderId) {
-      throw new LlmProviderError("No LLM provider is configured. Add Ollama in Settings to use AI features.", "none");
+      const msg = this.providers.size > 0
+        ? "No default local provider is set. Cloud providers are never used implicitly — select one in this node's Provider setting, or add Ollama in Settings for a local default."
+        : "No LLM provider is configured. Add Ollama in Settings to use AI features.";
+      throw new LlmProviderError(msg, "none");
     }
     return this.providers.get(this.defaultProviderId)!;
   }

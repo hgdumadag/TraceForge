@@ -70,7 +70,7 @@ export interface ProviderConfig {
 }
 
 export class LlmProviderError extends Error {
-  constructor(message: string, public providerId: string) {
+  constructor(message: string, public providerId: string, public status?: number) {
     super(message);
     this.name = "LlmProviderError";
   }

@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import * as XLSX from "xlsx";
 import {
   importFileToParquet,
+  listExcelSheets,
   rowsToParquet,
   executeTabularNode,
   previewParquet,
@@ -65,6 +67,36 @@ describe("import", () => {
     await expect(
       importFileToParquet("/tmp/nope.abc", "nope.abc", join(dir, "x.parquet"))
     ).rejects.toThrow(/Supported formats/);
+  });
+
+  it("lists Excel sheets and imports the selected sheet", async () => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet([
+        { ID: "A1", Amount: 10.5 },
+        { ID: "A2", Amount: 20 },
+        { ID: "A3", Amount: 30 }
+      ]),
+      "Expenses"
+    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Note: "extra" }]), "Notes");
+    const xlsxPath = join(dir, "fixture.xlsx");
+    await writeFile(xlsxPath, XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer);
+
+    expect(listExcelSheets(xlsxPath)).toEqual(["Expenses", "Notes"]);
+
+    const first = await importFileToParquet(xlsxPath, "fixture.xlsx", join(dir, "xlsx-first.parquet"));
+    expect(first.sheetNames).toEqual(["Expenses", "Notes"]);
+    expect(first.rowCount).toBe(3);
+    expect(first.columns.map((c) => c.name)).toEqual(["ID", "Amount"]);
+
+    const notes = await importFileToParquet(xlsxPath, "fixture.xlsx", join(dir, "xlsx-notes.parquet"), { sheet: "Notes" });
+    expect(notes.rowCount).toBe(1);
+
+    await expect(
+      importFileToParquet(xlsxPath, "fixture.xlsx", join(dir, "xlsx-bad.parquet"), { sheet: "Missing" })
+    ).rejects.toThrow(/was not found/);
   });
 });
 
@@ -262,6 +294,14 @@ describe("previews, profiling, export, manual tables", () => {
     const out = join(dir, "export.csv");
     await exportParquet(expenses.path, out, "csv");
     const re = await importFileToParquet(out, "export.csv", join(dir, "reimport.parquet"));
+    expect(re.rowCount).toBe(8);
+  });
+
+  it("exports to Excel and reimports matching row count", async () => {
+    const out = join(dir, "export.xlsx");
+    await exportParquet(expenses.path, out, "xlsx");
+    expect(listExcelSheets(out)).toEqual(["Data"]);
+    const re = await importFileToParquet(out, "export.xlsx", join(dir, "reimport-xlsx.parquet"));
     expect(re.rowCount).toBe(8);
   });
 

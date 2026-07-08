@@ -94,6 +94,7 @@ Acceptance criteria:
 - Invalid configuration blocks save or run.
 - User can preview input data while configuring when input data exists.
 - User can save configuration and return to canvas.
+- Column pickers offer a dropdown of the columns arriving at the node. The schema is resolved by walking the graph upstream: dataset bindings (Import File/Sample, New Table) are the source of truth for those nodes, and the schema is propagated statically from CURRENT configuration through nodes whose column shape is predictable (Select/Add/Edit/Overwrite Columns, Filter, Sort, Sample, Deduplicate, Find Replace, Text to Columns, Parse JSON, Validate exceptions, Join, Append, Unpivot) — this always reflects unsaved/just-changed config, so editing an upstream node's type or columns updates downstream pickers and expression validation immediately, without needing to rerun the workflow. The last run's recorded output is used only as a fallback for ports that cannot be simulated from config (Pivot, Python, Chart, AI nodes, API import, Validate's summary output); those pickers fall back further to free-text entry until a run records the actual schema.
 
 # 4. MVP node behavior
 
@@ -112,7 +113,7 @@ Acceptance criteria:
 ## 4.3 Select/Edit/Overwrite Columns
 
 - Select Columns chooses subset and order.
-- Edit Columns renames columns and changes types where safe.
+- Edit Columns renames columns and changes types where safe. The column picker shows the column's current type. When converting text to date/datetime, a source-format option declares how the value is written; values that do not match the declared format become null rather than failing the run. ISO values (`2026-07-30`) need no source format. The format picker offers common presets (YYYYMMDD, YYYYMMDDHHMMSS, MM/DD/YYYY, DD/MM/YYYY, ISO with time, `DD-Mon-YYYY`, `Mon DD, YYYY`, `DD Month YYYY`) plus a "Custom format" option for any other strptime pattern the user types directly.
 - Overwrite Columns replaces values using expression rules.
 
 ## 4.4 Join

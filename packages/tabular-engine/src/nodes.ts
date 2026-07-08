@@ -149,16 +149,21 @@ export function buildNodeSql(ctx: TabularNodeContext): Record<string, string> {
     case "edit_columns": {
       const input = single(ctx, "input");
       requireColumns(input, cfg.edits.map((e: any) => e.column), ctx.nodeLabel);
-      const edits = new Map<string, { rename?: string; newType?: ColumnType }>(
+      const edits = new Map<string, { rename?: string; newType?: ColumnType; sourceFormat?: string }>(
         cfg.edits.map((e: any) => [e.column, e])
       );
       const select = input.columns
         .map((c) => {
           const edit = edits.get(c.name);
           if (!edit) return qi(c.name);
-          const source = edit.newType
-            ? `TRY_CAST(${qi(c.name)} AS ${duckCastType(edit.newType)})`
-            : qi(c.name);
+          let source = qi(c.name);
+          if (edit.newType && edit.sourceFormat && (edit.newType === "date" || edit.newType === "datetime")) {
+            // Plain casts only accept ISO 8601; try_strptime parses declared formats (null on mismatch).
+            const fmt = `'${edit.sourceFormat.replace(/'/g, "''")}'`;
+            source = `TRY_CAST(try_strptime(CAST(${qi(c.name)} AS VARCHAR), ${fmt}) AS ${duckCastType(edit.newType)})`;
+          } else if (edit.newType) {
+            source = `TRY_CAST(${qi(c.name)} AS ${duckCastType(edit.newType)})`;
+          }
           return `${source} AS ${qi(edit.rename ?? c.name)}`;
         })
         .join(", ");

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type WorkflowRow } from "./api";
 import { Badge, ErrorBox, Modal, DataPreview, fmtDate } from "./components";
+import { ProviderPicker } from "./nodeconfig";
 
 const ALL_COLUMNS = ["Service", "Name", "Description", "Verification", "Active Version", "Published By", "Published", "Automations", "Updated"] as const;
 
@@ -144,9 +145,10 @@ function CreateWorkflowModal({ onClose, navigate }: { onClose: () => void; navig
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<any[]>([]);
+  const [providerId, setProviderId] = useState<string | undefined>(undefined);
 
   useEffect(() => { api.get<any[]>("/api/llm/providers").then(setProviders).catch(() => {}); }, []);
-  const defaultProvider = providers.find((p) => p.isDefault);
+  const selectedProvider = providers.find((p) => p.id === providerId) ?? providers.find((p) => p.isDefault);
 
   const createBlank = () =>
     api.post<any>("/api/workflows", { name, description, category })
@@ -158,7 +160,7 @@ function CreateWorkflowModal({ onClose, navigate }: { onClose: () => void; navig
     setError(null);
     setAiResult(null);
     try {
-      setAiResult(await api.post<any>("/api/llm/generate-workflow", { objective }));
+      setAiResult(await api.post<any>("/api/llm/generate-workflow", { objective, providerId }));
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -192,9 +194,10 @@ function CreateWorkflowModal({ onClose, navigate }: { onClose: () => void; navig
       )}
       {mode === "ai" && (
         <>
-          <div className={defaultProvider?.kind === "cloud" ? "warn-box" : "info-box"}>
-            Provider: <b>{defaultProvider?.displayName ?? "Ollama (local)"}</b>
-            {defaultProvider?.kind === "cloud"
+          <ProviderPicker value={providerId} onChange={setProviderId} />
+          <div className={selectedProvider?.kind === "cloud" ? "warn-box" : "info-box"}>
+            Provider: <b>{selectedProvider?.displayName ?? "Ollama (local)"}</b>
+            {selectedProvider?.kind === "cloud"
               ? " — cloud provider: your prompt leaves this machine. No audit data is sent, only your description."
               : " — runs locally; nothing leaves this machine."}
           </div>
@@ -502,8 +505,25 @@ export function SettingsPage() {
                 <td>{p.kind === "cloud" ? <span style={{ color: "var(--amber)" }}>cloud ⚠</span> : "local"}</td>
                 <td>{p.isDefault ? "✓" : ""}</td>
                 <td className="small">
-                  {health[p.id] ? (health[p.id].ok ? <span style={{ color: "var(--green)" }}>{health[p.id].detail}</span> : <span style={{ color: "var(--red)" }}>{health[p.id].detail}</span>) : (
-                    <button className="small" onClick={() => api.get<any>(`/api/llm/providers/${p.id}/health`).then((h) => setHealth({ ...health, [p.id]: h })).catch((e) => setHealth({ ...health, [p.id]: { ok: false, detail: e.message } }))}>Check</button>
+                  {health[p.id]?.checking ? (
+                    <span className="dim">Sending test prompt…</span>
+                  ) : (
+                    <>
+                      {health[p.id] && (
+                        <span style={{ color: health[p.id].ok ? "var(--green)" : "var(--red)" }}>{health[p.id].detail} </span>
+                      )}
+                      <button
+                        className="small"
+                        onClick={() => {
+                          setHealth((h) => ({ ...h, [p.id]: { checking: true } }));
+                          api.get<any>(`/api/llm/providers/${p.id}/health`)
+                            .then((res) => setHealth((h) => ({ ...h, [p.id]: res })))
+                            .catch((e) => setHealth((h) => ({ ...h, [p.id]: { ok: false, detail: e.message } })));
+                        }}
+                      >
+                        {health[p.id] ? "Re-check" : "Check"}
+                      </button>
+                    </>
                   )}
                 </td>
                 <td><button className="small ghost" onClick={() => api.del(`/api/llm/providers/${p.id}`).then(load)}>Remove</button></td>
@@ -517,7 +537,10 @@ export function SettingsPage() {
         )}
         <div className="row">
           <label className="field"><span>Type</span>
-            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            <select
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value, isDefault: ["openai", "azure_foundry"].includes(e.target.value) ? false : form.isDefault })}
+            >
               <option value="ollama">Ollama (local)</option>
               <option value="openai">OpenAI (cloud)</option>
               <option value="azure_foundry">Azure AI Foundry (cloud)</option>
@@ -537,9 +560,15 @@ export function SettingsPage() {
         {["openai", "azure_foundry"].includes(form.type) && (
           <label className="field"><span>API key (stored encrypted)</span><input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} /></label>
         )}
-        <label className="small" style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
-          <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} /> Make default provider
-        </label>
+        {["openai", "azure_foundry"].includes(form.type) ? (
+          <p className="small dim" style={{ marginBottom: 10 }}>
+            Cloud providers can't be the default — they're never used unless selected explicitly for a specific AI action.
+          </p>
+        ) : (
+          <label className="small" style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
+            <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} /> Make default provider
+          </label>
+        )}
         <button className="primary" onClick={addProvider}>Add provider</button>
       </div>
     </div>

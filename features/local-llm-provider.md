@@ -49,6 +49,13 @@ Supported provider families:
 - Azure AI Foundry / Azure OpenAI.
 - Future providers through a common interface.
 
+Azure AI Foundry hosts two distinct wire protocols under one brand, both handled by the `azure_foundry` provider type:
+
+- **Azure OpenAI-style resources** — base URL like `https://<resource>.openai.azure.com`. Uses the `api-key` header and `POST {baseUrl}/openai/deployments/{deployment}/chat/completions?api-version=...`.
+- **Foundry model-catalog deployments whose endpoint speaks the Anthropic Messages API** (e.g. Claude in Foundry) — base URL ending in `/anthropic/v<N>` (e.g. `https://<resource>.services.ai.azure.com/anthropic/v1`). Uses the `x-api-key` and `anthropic-version` headers and `POST {baseUrl}/messages`, with system-role messages lifted into a top-level `system` field per the Anthropic API contract.
+
+The provider detects which protocol to speak from the base URL shape alone — there is no separate "provider type" to pick in Settings for Claude in Foundry; the same Azure AI Foundry option handles both, and the default model/deployment name falls back to the latest released Claude model when the base URL is Anthropic-shaped and no explicit model is set.
+
 # 2. MVP AI use cases
 
 ## 2.1 Generate draft workflow
@@ -106,6 +113,19 @@ Provider settings must include:
 - API key reference for cloud providers.
 - Timeout.
 - Whether sample data sharing is allowed.
+
+Provider health check ("Check" in Settings):
+
+- Check sends a real one-line test prompt ("Reply with only the word OK") so a green result means the model actually responds, not merely that settings are filled in. The prompt contains no user data; for cloud providers, clicking Check is the explicit opt-in for that call.
+- Success shows the responding model and latency. Failures map to actionable guidance: invalid/revoked key (401/403), wrong model or deployment name (404), rate limit or quota (429), provider outage (5xx), unreachable endpoint, or — for Ollama — not running or model not pulled.
+- Error details never include provider response bodies (they may echo credentials); only status codes are interpreted.
+
+Provider selection on AI nodes (LLM Chat, Explain Expression, Generate Test Logic) and AI-assist entry points (inline "AI assist" on expression fields, AI-assisted workflow draft generation):
+
+- Each of these has a Provider picker. "Default (local)" resolves only to a local provider (Ollama); cloud providers are never used implicitly.
+- To use a cloud provider (OpenAI, Azure AI Foundry), the user must select it explicitly at the point of use; a cloud warning is shown when one is selected.
+- If no local provider exists and the picker is left on Default, the action fails with guidance to select a provider explicitly or add Ollama.
+- A cloud provider can never be set as the app-wide default in Settings — the "Make default provider" option is only offered for local provider types, since a cloud default could never actually be used implicitly (it would always hit the explicit-selection requirement above). This is enforced both in the Settings UI and in the gateway itself, so a stale or manually-edited config cannot silently make a cloud provider the default.
 
 # 4. Privacy rules
 

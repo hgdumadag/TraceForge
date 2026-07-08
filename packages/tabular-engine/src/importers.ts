@@ -1,7 +1,15 @@
 /** File import (features/data-import.md): CSV, Excel, JSON, Parquet → Parquet snapshot. */
+import { readFileSync } from "node:fs";
 import { stat, writeFile, mkdir } from "node:fs/promises";
 import { dirname, extname } from "node:path";
 import * as XLSX from "xlsx";
+
+// SheetJS fs-bound APIs (readFile/writeFile) are unavailable or unwired in ESM
+// contexts (Node CJS-interop misses `readFile`; the .mjs build never wires `fs`),
+// so workbooks are read from buffers via `XLSX.read` instead.
+function readWorkbook(filePath: string, opts: XLSX.ParsingOptions = {}): XLSX.WorkBook {
+  return XLSX.read(readFileSync(filePath), { type: "buffer", ...opts });
+}
 import {
   withConnection,
   materializeToParquet,
@@ -38,7 +46,7 @@ export function detectFormat(fileName: string): ImportFormat {
 }
 
 export function listExcelSheets(filePath: string): string[] {
-  const wb = XLSX.readFile(filePath, { bookSheets: true });
+  const wb = readWorkbook(filePath, { bookSheets: true });
   return wb.SheetNames;
 }
 
@@ -67,7 +75,7 @@ export async function importFileToParquet(
   let tempCsvPath: string | null = null;
 
   if (format === "xlsx") {
-    const wb = XLSX.readFile(filePath);
+    const wb = readWorkbook(filePath);
     sheetNames = wb.SheetNames;
     const sheet = options.sheet ?? wb.SheetNames[0];
     if (!wb.Sheets[sheet]) {

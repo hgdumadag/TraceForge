@@ -57,6 +57,8 @@ When making or changing a decision:
 | ADR-012 | Publish only verified workflow versions to toolkit | Accepted |
 | ADR-013 | Canonical workflow version status vocabulary | Accepted |
 | ADR-014 | Use Node built-in sqlite and @duckdb/node-api for the MVP | Accepted |
+| ADR-015 | Defer fastify v4→v5 upgrade (fast-uri CVE) | Accepted |
+| ADR-016 | Accept xlsx prototype-pollution risk; no npm fix available | Accepted |
 
 ---
 
@@ -431,3 +433,60 @@ No native build step for metadata storage; installation works with plain `npm in
 - `node:sqlite` emits an experimental warning; API surface used is minimal (exec/prepare/run/get/all).
 - `node:sqlite` cannot be resolved statically by vite/vitest, so it is loaded via `process.getBuiltinModule`.
 - Revisit if multi-user/server mode needs PostgreSQL (ADR-006 path unchanged).
+
+---
+
+# ADR-015: Defer fastify v4→v5 upgrade (fast-uri CVE)
+
+## Status
+
+Accepted
+
+## Context
+
+`npm audit` flagged a `fast-uri` vulnerability reachable via `fastify`. The issue involves unsafe URI normalization — encoded path segments like `%2e%2e` may be treated as real `..`, and encoded authority delimiters like `%40` can confuse host parsing. The reported fix is to upgrade to `fastify@5.10.0`, which is a breaking major version jump.
+
+## Decision
+
+Defer the upgrade from `fastify@^4.28.0` to v5.
+
+## Rationale
+
+The vulnerability is not exercisable in this app. The API server in `apps/api/src/server.ts` binds to localhost only (`project.md §8.4`). Route parameters are used as opaque IDs (`req.params as { id: string }`) and never re-parsed as URLs. There are no user-controlled redirect targets, proxy calls, or URL allowlist comparisons — the specific patterns the `fast-uri` bug targets.
+
+Additionally, Fastify v5 is a breaking major version: it requires Node ≥ 20, and all three plugins (`@fastify/cors`, `@fastify/multipart`, `@fastify/static`) would each need a coordinated major-version bump. The `@fastify/multipart` v9 API change is the highest-risk point given the file upload path at `POST /api/datasets/import`. The cost of upgrading exceeds the security benefit while the app is localhost-only.
+
+## Consequences
+
+- Revisit if the app is ever exposed beyond localhost.
+- Revisit if a Node runtime upgrade triggers compatibility issues with v4 plugins.
+- When upgrading, all three plugins must be bumped together: `@fastify/cors@10.x`, `@fastify/multipart@9.x`, `@fastify/static@8.x`.
+
+---
+
+# ADR-016: Accept xlsx prototype-pollution risk; no npm fix available
+
+## Status
+
+Accepted
+
+## Context
+
+`npm audit` flagged `xlsx@^0.18.5` (SheetJS Community Edition) for a prototype pollution vulnerability and a ReDoS issue. GitHub's advisory states the npm package is no longer maintained and no non-vulnerable version is available through npm.
+
+## Decision
+
+Accept the risk and continue using `xlsx` at the current version.
+
+## Rationale
+
+The prototype pollution issue is triggered by parsing a specially crafted file — the attack surface is `readWorkbook()`'s call to `XLSX.read()` in `packages/tabular-engine/src/importers.ts` (line 11, called from lines 49 and 78), reached when a user uploads an `.xlsx` file. However, because the server is localhost-only (`project.md §8.4`), an attacker would need local machine access to deliver a crafted file, which already implies a more privileged position than the vulnerability provides.
+
+The export path in `packages/tabular-engine/src/preview.ts` uses only write-side APIs (`json_to_sheet`, `writeFile`) against trusted internal Parquet data and is not affected by this vulnerability.
+
+The two alternatives carry real cost: replacing `xlsx` with `exceljs` requires API changes across both `importers.ts` and `preview.ts`; adopting SheetJS Pro requires a commercial license. Given the localhost scope, accepting the risk is the proportionate response.
+
+## Consequences
+
+- This decision must be revisited before any deployment that exposes the API beyond localhost.
+- If that boundary changes, replacing `xlsx` with `exceljs` is the preferred remediation path — the affected surface is small: two buffer-based `XLSX.read()` calls in `importers.ts` and the `XLSX.utils.*` / buffer-based `XLSX.write()` calls in `preview.ts`.

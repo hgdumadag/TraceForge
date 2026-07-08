@@ -7,6 +7,7 @@ import {
   MiniMap,
   Handle,
   Position,
+  NodeResizer,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
@@ -18,6 +19,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { NODE_TYPES, getNodeType, newId } from "@traceforge/domain";
+import { useTheme } from "./theme";
 
 export interface CanvasGraph {
   nodes: { id: string; type: string; label?: string; position: { x: number; y: number }; config: any; ui?: any }[];
@@ -64,8 +66,22 @@ function TfNode({ data, selected }: any) {
   );
 }
 
-function TfNote({ data }: any) {
-  return <div className="tf-note">{data.text || "(empty note)"}</div>;
+function TfNote({ data, selected }: any) {
+  return (
+    <div className="tf-note">
+      <NodeResizer minWidth={140} minHeight={80} isVisible={!!selected && !data.readOnly} color="var(--accent)" />
+      {data.readOnly ? (
+        <div className="tf-note-text">{data.text || "(empty note)"}</div>
+      ) : (
+        <textarea
+          className="tf-note-text nodrag nowheel"
+          value={data.text ?? ""}
+          onChange={(e) => data.onTextChange?.(e.target.value)}
+          placeholder="Type a note…"
+        />
+      )}
+    </div>
+  );
 }
 
 const nodeTypes = { tfNode: TfNode, tfNote: TfNote };
@@ -78,7 +94,14 @@ export function toRfGraph(graph: CanvasGraph, statuses: Record<string, string>):
     data: { label: n.label ?? getNodeType(n.type)?.label ?? n.type, nodeType: n.type, config: n.config, status: statuses[n.id] }
   }));
   for (const a of graph.annotations ?? []) {
-    nodes.push({ id: `ann_${a.id}`, type: "tfNote", position: a.position, data: { text: a.text ?? "" } });
+    nodes.push({
+      id: `ann_${a.id}`,
+      type: "tfNote",
+      position: a.position,
+      width: a.size?.width ?? 220,
+      height: a.size?.height ?? 120,
+      data: { text: a.text ?? "" }
+    });
   }
   const edges: RFEdge[] = graph.edges.map((e) => ({
     id: e.id,
@@ -96,7 +119,15 @@ export function fromRfGraph(nodes: RFNode[], edges: RFEdge[]): CanvasGraph {
   const graph: CanvasGraph = { nodes: [], edges: [], annotations: [] };
   for (const n of nodes) {
     if (n.type === "tfNote") {
-      graph.annotations.push({ id: n.id.replace(/^ann_/, ""), kind: "note", text: (n.data as any).text, position: n.position });
+      const width = n.width ?? n.measured?.width;
+      const height = n.height ?? n.measured?.height;
+      graph.annotations.push({
+        id: n.id.replace(/^ann_/, ""),
+        kind: "note",
+        text: (n.data as any).text,
+        position: n.position,
+        size: width && height ? { width, height } : undefined
+      });
     } else {
       graph.nodes.push({
         id: n.id,
@@ -179,6 +210,7 @@ export function FlowCanvas({
 }) {
   const [connectError, setConnectError] = useState<string | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout>>();
+  const theme = useTheme();
 
   const showError = (msg: string) => {
     setConnectError(msg);
@@ -189,9 +221,28 @@ export function FlowCanvas({
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       setRfNodes((nodes) => applyNodeChanges(changes, nodes));
-      if (changes.some((c) => c.type === "position" || c.type === "remove")) onDirty();
+      // "dimensions" covers sticky-note resizing (NodeResizer emits it via triggerNodeChanges).
+      if (changes.some((c) => c.type === "position" || c.type === "remove" || c.type === "dimensions")) onDirty();
     },
     [setRfNodes, onDirty]
+  );
+
+  const onNoteTextChange = useCallback(
+    (id: string, text: string) => {
+      setRfNodes((nodes) => nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)));
+      onDirty();
+    },
+    [setRfNodes, onDirty]
+  );
+
+  const renderNodes = useMemo(
+    () =>
+      rfNodes.map((n) =>
+        n.type === "tfNote"
+          ? { ...n, data: { ...n.data, readOnly, onTextChange: (text: string) => onNoteTextChange(n.id, text) } }
+          : n
+      ),
+    [rfNodes, readOnly, onNoteTextChange]
   );
 
   const onEdgesChange = useCallback(
@@ -239,7 +290,7 @@ export function FlowCanvas({
         <div className="error-box" style={{ position: "absolute", top: 8, left: 8, zIndex: 20 }}>{connectError}</div>
       )}
       <ReactFlow
-        nodes={rfNodes}
+        nodes={renderNodes}
         edges={rfEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
@@ -253,9 +304,9 @@ export function FlowCanvas({
         deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
         fitView
         proOptions={{ hideAttribution: true }}
-        colorMode="dark"
+        colorMode={theme}
       >
-        <Background gap={18} color="#232b34" />
+        <Background gap={18} color={theme === "light" ? "#c8d2dd" : "#232b34"} />
         <Controls />
         <MiniMap pannable zoomable style={{ background: "var(--bg-panel)" }} />
       </ReactFlow>

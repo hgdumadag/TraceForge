@@ -130,55 +130,173 @@ function CanvasTab({
     );
   }, [nodeStatuses]);
 
+  // Inspector collapses when nothing is selected (nothing to configure) and expands the
+  // moment a node is selected. The user can still toggle it manually at any time — collapsing
+  // while a node is selected persists until a different node is selected or it is deselected.
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(true);
+  useEffect(() => {
+    setInspectorCollapsed(!selectedId);
+  }, [selectedId]);
+
   const selectedNode = rfNodes.find((n) => n.id === selectedId && n.type === "tfNode");
 
   // Resolve upstream columns for the selected node (for column pickers + expression validation).
+  // Walks the graph upstream: dataset bindings are the source of truth for import nodes, and
+  // the schema is propagated statically through nodes whose column shape is predictable from
+  // CURRENT config — this must run before consulting any cached run output, so that editing an
+  // upstream node (e.g. changing a column's type in Edit Columns) is reflected immediately,
+  // even if that node was last run under an older config. The last run's recorded output is
+  // used only as a fallback, for ports whose schema genuinely can't be simulated from config
+  // (Pivot, Python, Chart, AI nodes, API import, and Validate's engine-generated summary output).
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setUpstreamCols({});
       if (!selectedNode) return;
-      const nodeType = (selectedNode.data as any).nodeType as string;
-      const def = getNodeType(nodeType);
-      // Import nodes: columns come from their own bound dataset.
-      const cfg = (selectedNode.data as any).config ?? {};
-      const fetchCols = async (dsvId: string) => {
+      const def = getNodeType((selectedNode.data as any).nodeType as string);
+      if (def && def.inputs.length === 0) return;
+
+      const fetchCols = async (dsvId: string): Promise<Record<string, string> | null> => {
         try {
           const p = await api.get<any>(`/api/dataset-versions/${dsvId}/preview?limit=1`);
           const out: Record<string, string> = {};
           for (const c of p.columns) out[c.name] = c.type;
-          setUpstreamCols(out);
-        } catch { /* ignore */ }
+          return out;
+        } catch { return null; }
       };
-      if (def && def.inputs.length === 0) return;
+
+      const outputColumns = async (nid: string, handle: string, depth: number): Promise<Record<string, string> | null> => {
+        if (depth > 32) return null;
+        const node = rfNodes.find((n) => n.id === nid);
+        if (!node) return null;
+        const type = (node.data as any).nodeType as string;
+        const cfg = (node.data as any).config ?? {};
+
+        // Exact sources whose schema IS the current config, not a simulation of it.
+        if (type === "import_file") return cfg.datasetVersionId ? fetchCols(cfg.datasetVersionId) : null;
+        if (type === "import_sample") {
+          const sample = datasets.find((d) => d.id === cfg.sampleId || d.name === cfg.sampleId);
+          return sample?.latestVersion ? fetchCols(sample.latestVersion.id) : null;
+        }
+        if (type === "new_table") {
+          const out: Record<string, string> = {};
+          for (const c of cfg.columns ?? []) if (c.name) out[c.name] = c.type ?? "unknown";
+          return Object.keys(out).length ? out : null;
+        }
+
+        const inputSchema = async (port?: string): Promise<Record<string, string> | null> => {
+          const edge = rfEdges.find((e) => e.target === nid && (!port || (e.targetHandle ?? "input") === port));
+          if (!edge) return null;
+          const srcType = (rfNodes.find((n) => n.id === edge.source)?.data as any)?.nodeType as string | undefined;
+          const srcHandle = edge.sourceHandle ?? getNodeType(srcType ?? "")?.outputs[0]?.name ?? "output";
+          return outputColumns(edge.source, srcHandle, depth + 1);
+        };
+
+        const simulated = await (async (): Promise<Record<string, string> | null> => {
+          switch (type) {
+            // Shape-preserving nodes (all outputs carry the input schema).
+            case "find_replace": case "sample": case "sort": case "filter":
+            case "deduplicate": case "overwrite_columns": case "append":
+              return inputSchema();
+            case "validate": {
+              if (handle !== "exceptions") return null; // summary schema is engine-generated
+              const input = await inputSchema();
+              if (!input) return null;
+              const keep: string[] = cfg.outputColumns?.length ? cfg.outputColumns : Object.keys(input);
+              const out: Record<string, string> = {};
+              for (const k of keep) if (input[k]) out[k] = input[k];
+              return out;
+            }
+            case "select_columns": {
+              const input = await inputSchema();
+              if (!input) return null;
+              const out: Record<string, string> = {};
+              for (const k of cfg.columns ?? []) if (input[k]) out[k] = input[k];
+              return Object.keys(out).length ? out : null;
+            }
+            case "add_columns": {
+              const input = await inputSchema();
+              if (!input) return null;
+              const out = { ...input };
+              for (const c of cfg.columns ?? []) if (c.name) out[c.name] = "unknown";
+              return out;
+            }
+            case "edit_columns": {
+              const input = await inputSchema();
+              if (!input) return null;
+              const edits = new Map<string, any>((cfg.edits ?? []).map((e: any) => [e.column, e]));
+              const out: Record<string, string> = {};
+              for (const [name, t] of Object.entries(input)) {
+                const e = edits.get(name);
+                out[e?.rename || name] = e?.newType ?? t;
+              }
+              return out;
+            }
+            case "text_to_columns": {
+              const input = await inputSchema();
+              if (!input) return null;
+              const out = { ...input };
+              for (const n of cfg.newColumns ?? []) if (n) out[n] = "text";
+              return out;
+            }
+            case "parse_json": {
+              const input = await inputSchema();
+              if (!input) return null;
+              const out = { ...input };
+              for (const f of cfg.fields ?? []) if (f.name) out[f.name] = "text";
+              return out;
+            }
+            case "join": {
+              const left = await inputSchema("left");
+              const right = await inputSchema("right");
+              if (!left) return null;
+              if (!right) return left; // partial knowledge still beats free-text
+              const out = { ...left };
+              for (const [name, t] of Object.entries(right)) {
+                out[name in left ? `${name}${cfg.rightSuffix ?? "_right"}` : name] = t;
+              }
+              return out;
+            }
+            case "unpivot": {
+              const input = await inputSchema();
+              if (!input) return null;
+              const out: Record<string, string> = {};
+              for (const k of cfg.idColumns ?? []) if (input[k]) out[k] = input[k];
+              out[cfg.nameTo || "name"] = "text";
+              out[cfg.valueTo || "value"] = "unknown";
+              return out;
+            }
+            default:
+              return null; // pivot, python, chart, AI, import_api: schema unknown before a run
+          }
+        })();
+        if (simulated) return simulated;
+
+        // Fallback: the schema actually produced by this node/port's last real run, used only
+        // when the current config can't be simulated (see cases above that return null).
+        const fromRun = nodeOutputs[nid]?.[handle];
+        if (fromRun) return fetchCols(fromRun);
+        return null;
+      };
+
       const incoming = rfEdges.find((e) => e.target === selectedNode.id);
       if (!incoming) return;
-      const source = rfNodes.find((n) => n.id === incoming.source);
-      if (!source) return;
-      const sourceType = (source.data as any).nodeType as string;
-      const sourceDef = getNodeType(sourceType);
-      const handle = incoming.sourceHandle ?? sourceDef?.outputs[0]?.name ?? "output";
-      // 1) From the last run's outputs.
-      const fromRun = nodeOutputs[source.id]?.[handle];
-      if (fromRun) return fetchCols(fromRun);
-      // 2) From the source import node's binding.
-      const sCfg = (source.data as any).config ?? {};
-      if (sourceType === "import_file" && sCfg.datasetVersionId) return fetchCols(sCfg.datasetVersionId);
-      if (sourceType === "import_file" && sCfg.datasetParameterKey) {
-        // Use any dataset chosen as a default for this parameter? Fall back to nothing.
-        return;
-      }
-      if (sourceType === "import_sample" && sCfg.sampleId) {
-        const sample = datasets.find((d) => d.id === sCfg.sampleId || d.name === sCfg.sampleId);
-        if (sample?.latestVersion) return fetchCols(sample.latestVersion.id);
-      }
+      const srcType = (rfNodes.find((n) => n.id === incoming.source)?.data as any)?.nodeType as string | undefined;
+      const handle = incoming.sourceHandle ?? getNodeType(srcType ?? "")?.outputs[0]?.name ?? "output";
+      const cols = await outputColumns(incoming.source, handle, 0);
+      if (!cancelled && cols) setUpstreamCols(cols);
     })();
+    return () => { cancelled = true; };
   }, [selectedId, rfEdges.length, nodeOutputs]);
 
   const addNode = (type: string) => {
     const offset = rfNodes.length * 24;
     if (type === "__note") {
       const id = `ann_${newId("note")}`;
-      setRfNodes((n) => [...n, { id, type: "tfNote", position: { x: 120 + offset, y: 80 + offset }, data: { text: "New note — explain the audit objective here." } }]);
+      setRfNodes((n) => [
+        ...n,
+        { id, type: "tfNote", position: { x: 120 + offset, y: 80 + offset }, width: 220, height: 120, data: { text: "New note — explain the audit objective here." } }
+      ]);
     } else {
       const def = getNodeType(type)!;
       const id = newId("node");
@@ -292,7 +410,18 @@ function CanvasTab({
           onDirty={() => setDirty(true)}
           readOnly={readOnly}
         />
-        <div className="inspector">
+        <div className={`inspector ${inspectorCollapsed ? "collapsed" : ""}`}>
+          <div className="inspector-head">
+            <button
+              className="sidebar-toggle"
+              onClick={() => setInspectorCollapsed((c) => !c)}
+              title={inspectorCollapsed ? "Expand inspector" : "Collapse inspector"}
+              aria-label={inspectorCollapsed ? "Expand inspector" : "Collapse inspector"}
+            >
+              {inspectorCollapsed ? "«" : "»"}
+            </button>
+          </div>
+          <div style={{ display: inspectorCollapsed ? "none" : undefined }}>
           {selectedNode ? (
             <>
               <NodeConfigPanel
@@ -331,6 +460,7 @@ function CanvasTab({
               {Object.keys(nodeOutputs).length > 0 && <p>Run complete — select a node to preview its outputs.</p>}
             </div>
           )}
+          </div>
         </div>
       </div>
       {previewDsv && (

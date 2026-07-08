@@ -6,6 +6,62 @@ import { api } from "./api";
 
 type Cfg = Record<string, any>;
 
+/**
+ * Common source formats offered when Edit Columns converts text → date/datetime.
+ * `format` is a DuckDB strptime pattern (https://duckdb.org/docs/sql/functions/dateformat):
+ *   %Y = 4-digit year, %m = 2-digit month, %d = 2-digit day,
+ *   %H:%M:%S = time, %b = abbreviated month name (Jul), %B = full month name (July)
+ * Anything not covered here can be typed directly via "Custom format" in the picker.
+ */
+const DATE_FORMATS: { label: string; format: string }[] = [
+  { label: "20260730 (YYYYMMDD)", format: "%Y%m%d" },
+  { label: "20260730143000 (YYYYMMDDHHMMSS)", format: "%Y%m%d%H%M%S" },
+  { label: "07/30/2026 (MM/DD/YYYY)", format: "%m/%d/%Y" },
+  { label: "30/07/2026 (DD/MM/YYYY)", format: "%d/%m/%Y" },
+  { label: "2026-07-30 14:30:00 (ISO with time)", format: "%Y-%m-%d %H:%M:%S" },
+  { label: "30-Jul-2026", format: "%d-%b-%Y" },
+  { label: "Jul 30, 2026", format: "%b %d, %Y" },
+  { label: "30 July 2026", format: "%d %B %Y" }
+];
+
+/** Date/datetime source-format picker: common presets, or a custom strptime pattern.
+ * customMode is separate local state (not derived from `value`) so the dropdown doesn't
+ * snap back to "ISO" while the user is mid-way through typing a custom format that
+ * happens not to match any preset yet (e.g. still empty, or partially typed). */
+function DateFormatPicker({ value, onChange }: { value?: string; onChange: (v?: string) => void }) {
+  const preset = DATE_FORMATS.find((f) => f.format === value);
+  const [customMode, setCustomMode] = useState(!!value && !preset);
+  return (
+    <>
+      <Field label="Source format" hint="how the value is currently written; ISO (2026-07-30) needs no format">
+        <select
+          value={customMode ? "__custom__" : (value ?? "")}
+          onChange={(e) => {
+            if (e.target.value === "__custom__") {
+              setCustomMode(true);
+            } else {
+              setCustomMode(false);
+              onChange(e.target.value || undefined);
+            }
+          }}
+        >
+          <option value="">ISO / already a date</option>
+          {DATE_FORMATS.map((f) => <option key={f.format} value={f.format}>{f.label}</option>)}
+          <option value="__custom__">Custom format…</option>
+        </select>
+      </Field>
+      {customMode && (
+        <div style={{ marginTop: -4, marginBottom: 10 }}>
+          <Field label="Custom format (strptime pattern)">
+            <input value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)} placeholder="e.g. %m-%d-%y" />
+          </Field>
+          <div className="small dim">%Y 4-digit year · %y 2-digit year · %m month · %d day · %H:%M:%S time · %b Jul · %B July</div>
+        </div>
+      )}
+    </>
+  );
+}
+
 interface FormProps {
   cfg: Cfg;
   set: (patch: Cfg) => void;
@@ -21,6 +77,31 @@ function Field({ label, children, hint }: { label: string; children: any; hint?:
       <span>{label}{hint ? <span className="dim"> — {hint}</span> : null}</span>
       {children}
     </label>
+  );
+}
+
+/** Provider selection for AI nodes. Cloud providers are never used implicitly
+ * (project.md §8.5) — leaving this on "Default" only ever resolves to a local provider. */
+export function ProviderPicker({ value, onChange }: { value?: string; onChange: (v?: string) => void }) {
+  const [providers, setProviders] = useState<any[]>([]);
+  useEffect(() => {
+    api.get<any[]>("/api/llm/providers").then(setProviders).catch(() => {});
+  }, []);
+  const selected = providers.find((p) => p.id === value);
+  return (
+    <Field label="Provider" hint="Default only uses local providers; pick a cloud provider explicitly">
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)}>
+        <option value="">Default (local)</option>
+        {providers.map((p) => (
+          <option key={p.id} value={p.id}>{p.displayName}{p.kind === "cloud" ? " — cloud" : ""}</option>
+        ))}
+      </select>
+      {selected?.kind === "cloud" && (
+        <div className="small" style={{ color: "var(--amber)" }}>
+          {selected.warning ?? "Cloud provider: prompts leave this machine."}
+        </div>
+      )}
+    </Field>
   );
 }
 
@@ -52,6 +133,7 @@ export function ExpressionInput({
 }) {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiRequest, setAiRequest] = useState("");
+  const [aiProviderId, setAiProviderId] = useState<string | undefined>(undefined);
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const validation = useMemo(() => {
@@ -86,9 +168,10 @@ export function ExpressionInput({
       </div>
       {aiOpen && (
         <div className="card" style={{ marginTop: 6 }}>
-          <Field label="Describe the rule" hint="sent to your selected LLM provider (Ollama local by default; schema only, no data rows)">
+          <Field label="Describe the rule" hint="schema only, no data rows are sent">
             <input value={aiRequest} onChange={(e) => setAiRequest(e.target.value)} placeholder="e.g. flag expenses over the receipt threshold with no receipt" />
           </Field>
+          <ProviderPicker value={aiProviderId} onChange={setAiProviderId} />
           <button
             className="small"
             disabled={aiBusy || !aiRequest.trim()}
@@ -99,7 +182,8 @@ export function ExpressionInput({
                 const r = await api.post<any>("/api/llm/suggest-expression", {
                   request: aiRequest,
                   columns: columnTypes,
-                  parameters
+                  parameters,
+                  providerId: aiProviderId
                 });
                 setAiResult(r);
               } catch (e: any) {
@@ -357,19 +441,26 @@ function NodeForm(props: FormProps & { nodeType: string }) {
           items={cfg.edits ?? []}
           onChange={(edits) => set({ edits })}
           addLabel="add edit"
-          makeNew={() => ({ column: "", rename: undefined, newType: undefined } as { column: string; rename?: string; newType?: string })}
+          makeNew={() => ({ column: "", rename: undefined, newType: undefined, sourceFormat: undefined } as { column: string; rename?: string; newType?: string; sourceFormat?: string })}
           render={(e2: any, update, remove) => (
-            <div className="row">
-              <Field label="Column"><ColumnInput value={e2.column} onChange={(v) => update({ column: v })} columns={columns} /></Field>
-              <Field label="Rename to (optional)"><input value={e2.rename ?? ""} onChange={(ev) => update({ rename: ev.target.value || undefined })} /></Field>
-              <Field label="New type (optional)">
-                <select value={e2.newType ?? ""} onChange={(ev) => update({ newType: ev.target.value || undefined })}>
-                  <option value="">keep</option>
-                  {["text", "integer", "decimal", "boolean", "date", "datetime"].map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </Field>
-              <button className="small ghost" style={{ flex: "0 0 auto", alignSelf: "center" }} onClick={remove}>✕</button>
-            </div>
+            <>
+              <div className="row">
+                <Field label={`Column${e2.column && columnTypes[e2.column] ? ` (currently: ${columnTypes[e2.column]})` : ""}`}>
+                  <ColumnInput value={e2.column} onChange={(v) => update({ column: v })} columns={columns} />
+                </Field>
+                <Field label="Rename to (optional)"><input value={e2.rename ?? ""} onChange={(ev) => update({ rename: ev.target.value || undefined })} /></Field>
+                <Field label="New type (optional)">
+                  <select value={e2.newType ?? ""} onChange={(ev) => update({ newType: ev.target.value || undefined, sourceFormat: undefined })}>
+                    <option value="">keep</option>
+                    {["text", "integer", "decimal", "boolean", "date", "datetime"].map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </Field>
+                <button className="small ghost" style={{ flex: "0 0 auto", alignSelf: "center" }} onClick={remove}>✕</button>
+              </div>
+              {(e2.newType === "date" || e2.newType === "datetime") && (
+                <DateFormatPicker value={e2.sourceFormat} onChange={(sourceFormat) => update({ sourceFormat })} />
+              )}
+            </>
           )}
         />
       );
@@ -522,19 +613,26 @@ function NodeForm(props: FormProps & { nodeType: string }) {
               <option value="false">No</option><option value="true">Yes</option>
             </select>
           </Field>
+          <ProviderPicker value={cfg.providerId} onChange={(providerId) => set({ providerId })} />
         </>
       );
     case "explain_expression":
       return (
-        <Field label="Expression to explain">
-          <textarea className="mono" value={cfg.expression ?? ""} onChange={(e) => set({ expression: e.target.value })} />
-        </Field>
+        <>
+          <Field label="Expression to explain">
+            <textarea className="mono" value={cfg.expression ?? ""} onChange={(e) => set({ expression: e.target.value })} />
+          </Field>
+          <ProviderPicker value={cfg.providerId} onChange={(providerId) => set({ providerId })} />
+        </>
       );
     case "generate_test_logic":
       return (
-        <Field label="Audit objective" hint="AI output is a draft for review — it never runs unreviewed">
-          <textarea value={cfg.objective ?? ""} onChange={(e) => set({ objective: e.target.value })} />
-        </Field>
+        <>
+          <Field label="Audit objective" hint="AI output is a draft for review — it never runs unreviewed">
+            <textarea value={cfg.objective ?? ""} onChange={(e) => set({ objective: e.target.value })} />
+          </Field>
+          <ProviderPicker value={cfg.providerId} onChange={(providerId) => set({ providerId })} />
+        </>
       );
     case "new_table":
     default:

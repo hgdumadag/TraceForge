@@ -1,6 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { z } from "zod";
 import { LlmGateway, MockProvider, redactSecrets, LlmProviderError, createProvider } from "../src/index.js";
+
+function stubFetch(response: unknown, status = 200) {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: status < 400,
+    status,
+    json: async () => response
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
 
 describe("redaction", () => {
   it("redacts api keys, tokens, and JWTs", () => {
@@ -24,6 +34,20 @@ describe("gateway provider selection", () => {
     const res = await gw.chat({ messages: [{ role: "user", content: "hello" }] });
     expect(res.providerId).toBe("mock1");
     expect(res.content).toBe("mock:hello");
+  });
+
+  it("never lets a cloud provider become the implicit default, even when asked to", async () => {
+    const gw = new LlmGateway();
+    // makeDefault=true mirrors a stored is_default=1 row for a cloud provider — a state
+    // the Settings UI should now prevent creating, but old data or a bug could still produce.
+    gw.registerProvider({ id: "az", type: "azure_foundry", displayName: "Azure", apiKey: "k", baseUrl: "https://x.openai.azure.com" }, true);
+    gw.registerProvider({ id: "mock1", type: "mock", displayName: "Mock" });
+    const providers = gw.listProviders();
+    expect(providers.find((p) => p.id === "az")?.isDefault).toBe(false);
+    expect(providers.find((p) => p.id === "mock1")?.isDefault).toBe(true);
+    // Calling with no providerId must resolve to the local provider, not throw.
+    const res = await gw.chat({ messages: [{ role: "user", content: "hello" }] });
+    expect(res.providerId).toBe("mock1");
   });
 
   it("requires cloud providers to be explicitly configured with credentials", () => {
@@ -95,5 +119,65 @@ describe("structured output", () => {
     await expect(
       gw.chatStructured({ messages: [{ role: "user", content: "go" }] }, schema)
     ).rejects.toThrow(/validation/);
+  });
+});
+
+describe("azure foundry provider protocol detection", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("speaks Azure OpenAI's protocol for a classic resource URL", async () => {
+    const fetchMock = stubFetch({
+      model: "gpt-4o-mini",
+      choices: [{ message: { content: "hi" } }],
+      usage: { prompt_tokens: 3, completion_tokens: 1 }
+    });
+    const provider = createProvider({
+      id: "az",
+      type: "azure_foundry",
+      displayName: "Azure",
+      apiKey: "k",
+      baseUrl: "https://my-resource.openai.azure.com",
+      deployment: "gpt-4o-mini"
+    });
+    const res = await provider.chat({ messages: [{ role: "user", content: "hello" }] });
+    expect(res.content).toBe("hi");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/openai/deployments/gpt-4o-mini/chat/completions");
+    expect((init.headers as Record<string, string>)["api-key"]).toBe("k");
+    expect((init.headers as Record<string, string>)["x-api-key"]).toBeUndefined();
+  });
+
+  it("speaks the Anthropic Messages API for a Claude-in-Foundry URL", async () => {
+    const fetchMock = stubFetch({
+      model: "claude-sonnet-4-5",
+      content: [{ type: "text", text: "hi" }],
+      usage: { input_tokens: 5, output_tokens: 2 }
+    });
+    const provider = createProvider({
+      id: "az-claude",
+      type: "azure_foundry",
+      displayName: "Claude in Foundry",
+      apiKey: "k",
+      baseUrl: "https://my-claude-resource.services.ai.azure.com/anthropic/v1/",
+      deployment: "claude-sonnet-4-5"
+    });
+    const res = await provider.chat({
+      messages: [
+        { role: "system", content: "You are terse." },
+        { role: "user", content: "hello" }
+      ]
+    });
+    expect(res.content).toBe("hi");
+    expect(res.usage.promptTokens).toBe(5);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://my-claude-resource.services.ai.azure.com/anthropic/v1/messages");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["x-api-key"]).toBe("k");
+    expect(headers["anthropic-version"]).toBeTruthy();
+    expect(headers["api-key"]).toBeUndefined();
+    const body = JSON.parse(init.body as string);
+    expect(body.system).toBe("You are terse.");
+    expect(body.messages).toEqual([{ role: "user", content: "hello" }]);
+    expect(body.max_tokens).toBeGreaterThan(0);
   });
 });
