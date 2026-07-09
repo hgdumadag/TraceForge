@@ -1,4 +1,10 @@
-import type { MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { ReactFlow, Background } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { toRfGraph, nodeTypes } from "./canvas";
+import { useTheme } from "./theme";
+import { ThemeToggle } from "./theme-toggle";
+import { LANDING_SCENES } from "./landing-templates";
 
 /** Scrolls to the feature cards section in-place, without changing location.hash
  * (which would otherwise trip the hash router in App.tsx and navigate away
@@ -6,6 +12,80 @@ import type { MouseEvent } from "react";
 function scrollToFeatures(e: MouseEvent) {
   e.preventDefault();
   document.getElementById("features-section")?.scrollIntoView({ behavior: "smooth" });
+}
+
+const ROTATE_MS = 5500;
+const NO_STATUSES = {};
+
+/** Auto-rotating preview of real built-in audit templates, rendered with the same
+ * read-only-styled node/edge components as the canvas builder (canvas.tsx) — so the
+ * dashed edges animate exactly like the real thing. */
+function LandingIllustration() {
+  const theme = useTheme();
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reducedMotion = useRef(
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+
+  useEffect(() => {
+    if (paused || reducedMotion.current) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % LANDING_SCENES.length), ROTATE_MS);
+    return () => clearInterval(id);
+  }, [paused]);
+
+  const scene = LANDING_SCENES[index];
+  const { nodes, edges } = useMemo(() => toRfGraph(scene.graph, NO_STATUSES), [scene]);
+
+  return (
+    <div
+      className="landing-illustration"
+      aria-hidden="true"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="landing-illustration-chrome">
+        <span className="landing-illustration-dot" /><span className="landing-illustration-dot" /><span className="landing-illustration-dot" />
+        <span className="landing-illustration-chrome-title mono">{scene.name}</span>
+      </div>
+      <div className="landing-illustration-canvas">
+        <ReactFlow
+          key={scene.id}
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          proOptions={{ hideAttribution: true }}
+          colorMode={theme}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          nodesFocusable={false}
+          edgesFocusable={false}
+          panOnDrag={false}
+          panOnScroll={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          zoomOnDoubleClick={false}
+          preventScrolling={false}
+          style={{ pointerEvents: "none" }}
+        >
+          <Background gap={18} color={theme === "light" ? "#c8d2dd" : "#232b34"} />
+        </ReactFlow>
+      </div>
+      <div className="landing-illustration-dots">
+        {LANDING_SCENES.map((s, i) => (
+          <button
+            key={s.id}
+            className={i === index ? "active" : ""}
+            aria-label={s.name}
+            onClick={() => setIndex(i)}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** Marketing-style entry screen shown at "#/", before the app shell. */
@@ -19,7 +99,10 @@ export function LandingPage({ navigate }: { navigate: (h: string) => void }) {
           <a href="#features-section" onClick={scrollToFeatures}>How it works</a>
           <button className="link-btn" onClick={() => navigate("#/guide")}>Guide</button>
         </nav>
-        <button className="primary" onClick={() => navigate("#/workflows")}>Open Workflows</button>
+        <div className="landing-nav-actions">
+          <ThemeToggle className="sidebar-toggle theme-toggle landing-theme-toggle" />
+          <button className="primary" onClick={() => navigate("#/workflows")}>Open Workflows</button>
+        </div>
       </header>
 
       <section className="landing-hero">
@@ -34,39 +117,22 @@ export function LandingPage({ navigate }: { navigate: (h: string) => void }) {
           <a href="#features-section" className="btn" onClick={scrollToFeatures}>See how it works</a>
         </div>
 
-        <div className="landing-illustration" aria-hidden="true">
-          <svg className="landing-illustration-lines" viewBox="0 0 600 120" preserveAspectRatio="none">
-            <path d="M180 60 H240" stroke="var(--border)" strokeWidth="2" fill="none" />
-            <path d="M360 60 H420" stroke="var(--border)" strokeWidth="2" fill="none" />
-          </svg>
-          <div className="landing-illustration-card">
-            <div className="landing-illustration-kind">Import</div>
-            <div>Payroll Register</div>
-          </div>
-          <div className="landing-illustration-card accent">
-            <div className="landing-illustration-kind">Merge · Join</div>
-            <div>Match to HR Master</div>
-          </div>
-          <div className="landing-illustration-card">
-            <div className="landing-illustration-kind">Transform</div>
-            <div>Unknown / Terminated</div>
-          </div>
-        </div>
+        <LandingIllustration />
       </section>
 
       <section className="landing-features" id="features-section">
         <div className="landing-feature-card">
-          <div className="landing-feature-icon" aria-hidden="true">⚿</div>
+          <div className="landing-feature-icon cat-merge" aria-hidden="true">⚿</div>
           <h3>A canvas, not code</h3>
           <p>Drag out import, merge, and transform steps and connect them by hand. If you can describe the test in plain language, you can build it here.</p>
         </div>
         <div className="landing-feature-card">
-          <div className="landing-feature-icon" aria-hidden="true">✓</div>
+          <div className="landing-feature-icon cat-transform" aria-hidden="true">✓</div>
           <h3>Verify once, trust always</h3>
           <p>Lock a workflow once its logic checks out. Verified versions can't drift, so everyone downstream knows exactly what they're relying on.</p>
         </div>
         <div className="landing-feature-card">
-          <div className="landing-feature-icon" aria-hidden="true">↻</div>
+          <div className="landing-feature-icon cat-governance" aria-hidden="true">↻</div>
           <h3>Build once, run forever</h3>
           <p>Every quarter, every client, every new dataset — reuse the same workflow instead of rebuilding the test from scratch.</p>
         </div>

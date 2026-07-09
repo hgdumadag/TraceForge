@@ -3,7 +3,7 @@ import { CatalogPage, TemplatesPage, DatasetsPage, ToolkitPage, SettingsPage } f
 import { WorkflowPage } from "./workflow";
 import { GuidePage } from "./guide";
 import { LandingPage } from "./landing";
-import { useTheme, toggleTheme } from "./theme";
+import { ThemeToggle } from "./theme-toggle";
 
 function useHashRoute(): [string, (h: string) => void] {
   const [hash, setHash] = useState(location.hash || "#/");
@@ -16,21 +16,6 @@ function useHashRoute(): [string, (h: string) => void] {
     location.hash = h;
   };
   return [hash, navigate];
-}
-
-function ThemeToggle() {
-  const theme = useTheme();
-  const next = theme === "dark" ? "light" : "dark";
-  return (
-    <button
-      className="sidebar-toggle theme-toggle"
-      onClick={toggleTheme}
-      title={`Switch to ${next} theme`}
-      aria-label={`Switch to ${next} theme`}
-    >
-      {theme === "dark" ? "☀" : "☾"}
-    </button>
-  );
 }
 
 export default function App() {

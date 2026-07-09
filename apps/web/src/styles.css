@@ -373,6 +373,10 @@ button.primary.run:hover:not(:disabled) { background: var(--green); color: #fff;
 .landing-nav-links a, .landing-nav-links .link-btn { color: var(--text-dim); font-size: 14px; }
 .landing-nav-links a:hover, .landing-nav-links .link-btn:hover { color: var(--text); text-decoration: none; }
 .link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
+.landing-nav-actions { display: flex; align-items: center; gap: 12px; }
+.landing-theme-toggle {
+  margin-bottom: 0; border: 1px solid var(--border); font-size: 15px; padding: 5px 9px;
+}
 
 .landing-hero {
   display: flex; flex-direction: column; align-items: center; text-align: center;
@@ -388,17 +392,33 @@ button.primary.run:hover:not(:disabled) { background: var(--green); color: #fff;
 .landing-cta .btn { padding: 7px 13px; border-radius: 6px; border: 1px solid var(--border); }
 
 .landing-illustration {
-  position: relative; display: flex; align-items: center; justify-content: center; gap: 60px;
+  display: flex; flex-direction: column;
   margin-top: 32px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 32px 40px; width: 100%; max-width: 700px;
+  width: 100%; max-width: 760px; overflow: hidden;
 }
-.landing-illustration-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
-.landing-illustration-card {
-  position: relative; background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 8px;
-  padding: 10px 14px; font-size: 13px; min-width: 140px; text-align: left;
+.landing-illustration-chrome {
+  display: flex; align-items: center; gap: 6px; padding: 10px 14px;
+  background: var(--bg-panel-2); border-bottom: 1px solid var(--border);
 }
-.landing-illustration-card.accent { border-color: var(--accent-2); }
-.landing-illustration-kind { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
+.landing-illustration-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.landing-illustration-chrome-title {
+  margin-left: auto; color: var(--text-dim); font-size: 11px; letter-spacing: 0.3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.landing-illustration-canvas { position: relative; width: 100%; height: 320px; }
+.landing-illustration-canvas .react-flow__renderer { animation: landing-illustration-fade 0.4s ease; }
+@keyframes landing-illustration-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.landing-illustration-dots {
+  display: flex; gap: 6px; align-items: center; justify-content: center; padding: 10px 0 14px;
+}
+.landing-illustration-dots button {
+  width: 6px; height: 6px; padding: 0; border: none; border-radius: 3px; cursor: pointer;
+  background: var(--border); transition: width 0.2s ease, background 0.2s ease;
+}
+.landing-illustration-dots button.active { width: 16px; background: var(--accent); }
 
 .landing-features {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
@@ -411,6 +431,9 @@ button.primary.run:hover:not(:disabled) { background: var(--green); color: #fff;
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   border-radius: 8px; background: var(--bg-panel-2); color: var(--accent); margin-bottom: 10px;
 }
+.landing-feature-icon.cat-merge { color: var(--cat-merge); background: var(--cat-merge-bg); }
+.landing-feature-icon.cat-transform { color: var(--cat-transform); background: var(--cat-transform-bg); }
+.landing-feature-icon.cat-governance { color: var(--cat-governance); background: var(--cat-governance-bg); }
 .landing-feature-card h3 { margin: 0 0 6px; font-size: 15px; }
 .landing-feature-card p { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.5; }
 

@@ -120,7 +120,7 @@ function TfNote({ data, selected }: any) {
   );
 }
 
-const nodeTypes = { tfNode: TfNode, tfNote: TfNote };
+export const nodeTypes = { tfNode: TfNode, tfNote: TfNote };
 
 export function toRfGraph(graph: CanvasGraph, statuses: Record<string, string>): { nodes: RFNode[]; edges: RFEdge[] } {
   const nodes: RFNode[] = graph.nodes.map((n) => ({
