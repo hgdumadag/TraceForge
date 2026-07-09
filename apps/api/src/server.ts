@@ -49,6 +49,11 @@ export async function buildApp(options: { dataDir?: string; webDist?: string } =
   await seedSampleDatasets(store, paths);
 
   const app = Fastify({ logger: false, bodyLimit: 50 * 1024 * 1024 });
+  // Release the SQLite file handle when the app shuts down — otherwise the .db/-wal/-shm
+  // files stay locked (breaks Windows cleanup of temp data dirs, e.g. in tests).
+  app.addHook("onClose", async () => {
+    db.close();
+  });
   await app.register(cors, { origin: true });
   await app.register(multipart, { limits: { fileSize: 500 * 1024 * 1024 } });
 
