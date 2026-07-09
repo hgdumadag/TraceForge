@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CatalogPage, TemplatesPage, DatasetsPage, ToolkitPage, SettingsPage } from "./pages";
 import { WorkflowPage } from "./workflow";
 import { GuidePage } from "./guide";
+import { LandingPage } from "./landing";
 import { useTheme, toggleTheme } from "./theme";
 
 function useHashRoute(): [string, (h: string) => void] {
@@ -45,8 +46,12 @@ export default function App() {
     if (workflowId) setSidebarCollapsed(true);
   }, [workflowId]);
 
+  if (hash === "#/") {
+    return <LandingPage navigate={navigate} />;
+  }
+
   const nav = [
-    { hash: "#/", label: "Workflows" },
+    { hash: "#/workflows", label: "Workflows" },
     { hash: "#/templates", label: "Templates" },
     { hash: "#/datasets", label: "Datasets" },
     { hash: "#/toolkit", label: "Toolkit" },
@@ -58,7 +63,7 @@ export default function App() {
     <div className="app">
       <nav className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-head">
-          <div className="logo">Trace<span>Forge</span></div>
+          <button className="logo logo-link" onClick={() => navigate("#/")}>Trace<span>Forge</span></button>
           <div style={{ display: "flex", flexShrink: 0 }}>
             <ThemeToggle />
             <button
@@ -74,7 +79,7 @@ export default function App() {
         {nav.map((n) => (
           <button
             key={n.hash}
-            className={`navlink ${hash === n.hash || (n.hash === "#/" && workflowMatch) ? "active" : ""}`}
+            className={`navlink ${hash === n.hash || (n.hash === "#/workflows" && workflowMatch) ? "active" : ""}`}
             onClick={() => navigate(n.hash)}
           >
             {n.label}
