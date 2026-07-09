@@ -338,3 +338,8 @@ ul.plain li { padding: 3px 0; }
 /* Chart node rendering */
 .chart-view { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; }
 .chart-svg { width: 100%; height: auto; display: block; }
+
+/* Canvas edges: selected edge picks up the accent; label styling used from Phase 2. */
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--accent) !important; }
+.react-flow__edge-text { fill: var(--text-dim); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 10.5px; }
+.react-flow__edge-textbg { fill: var(--bg-panel); }

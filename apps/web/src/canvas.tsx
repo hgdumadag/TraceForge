@@ -131,8 +131,8 @@ export function toRfGraph(graph: CanvasGraph, statuses: Record<string, string>):
     sourceHandle: e.sourceHandle,
     target: e.target,
     targetHandle: e.targetHandle,
-    animated: false,
-    style: { stroke: "var(--border)" }
+    animated: true,
+    style: { stroke: "var(--edge)", strokeWidth: 2 }
   }));
   return { nodes, edges };
 }
