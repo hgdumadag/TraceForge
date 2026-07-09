@@ -371,12 +371,14 @@ export function DatasetsPage() {
       <ErrorBox error={error} />
       <div className="grid-wrap">
         <table className="grid">
-          <thead><tr><th>Name</th><th>Kind</th><th>Rows</th><th>Columns</th><th>Source file</th><th>Fingerprint</th><th>Imported</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Kind</th><th>Workflow</th><th>Run</th><th>Rows</th><th>Columns</th><th>Source file</th><th>Fingerprint</th><th>Imported</th><th></th></tr></thead>
           <tbody>
             {datasets.map((d) => (
               <tr key={d.id}>
                 <td style={{ fontWeight: 600 }}>{d.name}</td>
                 <td><span className="chip">{d.kind.replace(/_/g, " ")}</span></td>
+                <td className="dim">{d.sourceWorkflowName ?? "—"}</td>
+                <td className="dim">{d.executedAt ? fmtDate(d.executedAt) : "—"}</td>
                 <td>{d.latestVersion?.rowCount ?? "—"}</td>
                 <td>{d.latestVersion?.columns.length ?? "—"}</td>
                 <td className="dim">{d.latestVersion?.sourceFileName ?? "—"}</td>
@@ -391,7 +393,7 @@ export function DatasetsPage() {
                 </td>
               </tr>
             ))}
-            {datasets.length === 0 && <tr><td colSpan={8} className="empty">No datasets yet. Import a file to get started.</td></tr>}
+            {datasets.length === 0 && <tr><td colSpan={10} className="empty">No datasets yet. Import a file to get started.</td></tr>}
           </tbody>
         </table>
       </div>

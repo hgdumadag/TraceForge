@@ -51,6 +51,7 @@ describe("MVP lifecycle", () => {
   let expensesDsvId: string;
   let executionId: string;
   let v2Id: string;
+  let firstRunExecutedAt: string;
 
   it("1. creates a workflow from a template (clone keeps parameters + graph)", async () => {
     const { status, json } = await api("POST", "/api/workflows", {
@@ -95,6 +96,10 @@ describe("MVP lifecycle", () => {
     expect(json.datasetVersion.rowCount).toBe(8);
     expect(json.datasetVersion.sourceFileHash).toMatch(/^[0-9a-f]{64}$/);
     expect(json.datasetVersion.columns.map((c: any) => c.name)).toContain("Amount in USD");
+    expect(json.dataset.sourceWorkflowId).toBeNull();
+    expect(json.dataset.sourceWorkflowName).toBeNull();
+    expect(json.dataset.sourceExecutionId).toBeNull();
+    expect(json.dataset.executedAt).toBeNull();
   });
 
   it("3–4. sample datasets are available offline; preview works", async () => {
@@ -139,6 +144,18 @@ describe("MVP lifecycle", () => {
     const { json: preview } = await api("GET", `/api/dataset-versions/${exceptionsDsv}/preview`);
     expect(preview.columns.map((c: any) => c.name)).toContain("Validation");
     expect(preview.totalRows).toBeGreaterThan(0);
+
+    // Node outputs from this run all carry the same workflow/run identity.
+    const { json: nodeOutputs } = await api("GET", "/api/datasets?kinds=node_output");
+    const fromThisRun = nodeOutputs.filter((d: any) => d.sourceExecutionId === executionId);
+    expect(fromThisRun.length).toBeGreaterThan(0);
+    for (const d of fromThisRun) {
+      expect(d.sourceWorkflowId).toBe(workflowId);
+      expect(d.sourceWorkflowName).toBe("T&E Testing — FY26");
+      expect(d.executedAt).toBeTruthy();
+    }
+    firstRunExecutedAt = fromThisRun[0].executedAt;
+    expect(new Set(fromThisRun.map((d: any) => d.executedAt)).size).toBe(1);
   });
 
   it("missing required parameter fails the run with a clear error", async () => {
@@ -263,6 +280,11 @@ describe("MVP lifecycle", () => {
     expect(detail.execution.status).toBe("succeeded");
     expect(detail.execution.rerunOfExecutionId).toBe(executionId);
     expect(detail.execution.triggerType).toBe("rerun");
+
+    const { json: nodeOutputs } = await api("GET", "/api/datasets?kinds=node_output");
+    const fromRerun = nodeOutputs.filter((d: any) => d.sourceExecutionId === rerun.json.id);
+    expect(fromRerun.length).toBeGreaterThan(0);
+    expect(fromRerun[0].executedAt).not.toBe(firstRunExecutedAt);
   });
 
   it("14. AI assist works through the mock provider with schema validation", async () => {

@@ -64,12 +64,20 @@ export class ExecutionService {
       createdBy: input.actor
     });
 
-    const runtime = new ApiNodeRuntime({ store: this.store, paths: this.paths, gateway: this.gateway, actor: input.actor });
-
     await this.queue.enqueue({
       executionId: execution.id,
       run: async (signal) => {
         const startedAt = nowIso();
+        const runtime = new ApiNodeRuntime({
+          store: this.store,
+          paths: this.paths,
+          gateway: this.gateway,
+          actor: input.actor,
+          sourceWorkflowId: workflow.id,
+          sourceWorkflowName: workflow.name,
+          sourceExecutionId: execution.id,
+          executedAt: startedAt
+        });
         this.store.updateExecution(execution.id, { status: "running", startedAt });
         this.emit({ type: "execution", executionId: execution.id, data: { status: "running", startedAt } });
         try {
