@@ -63,7 +63,11 @@ export const DatasetSchema = z.object({
   workspaceId: z.string(),
   name: z.string().min(1),
   kind: z.enum(["imported_file", "sample", "manual_table", "node_output", "api_import"]),
-  createdAt: z.string()
+  createdAt: z.string(),
+  sourceWorkflowId: z.string().nullable().default(null),
+  sourceWorkflowName: z.string().nullable().default(null),
+  sourceExecutionId: z.string().nullable().default(null),
+  executedAt: z.string().nullable().default(null)
 });
 export type Dataset = z.infer<typeof DatasetSchema>;
 

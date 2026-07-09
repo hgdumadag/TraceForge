@@ -95,6 +95,10 @@ describe("MVP lifecycle", () => {
     expect(json.datasetVersion.rowCount).toBe(8);
     expect(json.datasetVersion.sourceFileHash).toMatch(/^[0-9a-f]{64}$/);
     expect(json.datasetVersion.columns.map((c: any) => c.name)).toContain("Amount in USD");
+    expect(json.dataset.sourceWorkflowId).toBeNull();
+    expect(json.dataset.sourceWorkflowName).toBeNull();
+    expect(json.dataset.sourceExecutionId).toBeNull();
+    expect(json.dataset.executedAt).toBeNull();
   });
 
   it("3–4. sample datasets are available offline; preview works", async () => {

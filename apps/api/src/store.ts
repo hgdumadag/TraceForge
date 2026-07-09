@@ -578,16 +578,43 @@ export class Store {
 
   // --- Datasets --------------------------------------------------------------
 
-  createDataset(name: string, kind: Dataset["kind"]): Dataset {
+  createDataset(
+    name: string,
+    kind: Dataset["kind"],
+    provenance?: { sourceWorkflowId: string; sourceWorkflowName: string; sourceExecutionId: string; executedAt: string }
+  ): Dataset {
     const id = newId("ds");
-    this.db.prepare("INSERT INTO datasets (id, name, kind, created_at) VALUES (?,?,?,?)").run(id, name, kind, nowIso());
+    this.db
+      .prepare(
+        "INSERT INTO datasets (id, name, kind, created_at, source_workflow_id, source_workflow_name, source_execution_id, executed_at) VALUES (?,?,?,?,?,?,?,?)"
+      )
+      .run(
+        id,
+        name,
+        kind,
+        nowIso(),
+        provenance?.sourceWorkflowId ?? null,
+        provenance?.sourceWorkflowName ?? null,
+        provenance?.sourceExecutionId ?? null,
+        provenance?.executedAt ?? null
+      );
     return this.getDataset(id);
   }
 
   getDataset(id: string): Dataset {
     const row = this.db.prepare("SELECT * FROM datasets WHERE id=?").get(id) as any;
     if (!row) throw new StoreError(`Dataset ${id} was not found.`, 404);
-    return { id: row.id, workspaceId: row.workspace_id, name: row.name, kind: row.kind, createdAt: row.created_at };
+    return {
+      id: row.id,
+      workspaceId: row.workspace_id,
+      name: row.name,
+      kind: row.kind,
+      createdAt: row.created_at,
+      sourceWorkflowId: row.source_workflow_id ?? null,
+      sourceWorkflowName: row.source_workflow_name ?? null,
+      sourceExecutionId: row.source_execution_id ?? null,
+      executedAt: row.executed_at ?? null
+    };
   }
 
   renameDataset(id: string, name: string): Dataset {
@@ -600,7 +627,20 @@ export class Store {
   listDatasets(kinds?: Dataset["kind"][]): (Dataset & { latestVersion: DatasetVersion | null })[] {
     const rows = this.db.prepare("SELECT * FROM datasets ORDER BY created_at DESC").all() as any[];
     return rows
-      .map((row) => ({ id: row.id, workspaceId: row.workspace_id, name: row.name, kind: row.kind, createdAt: row.created_at } as Dataset))
+      .map(
+        (row) =>
+          ({
+            id: row.id,
+            workspaceId: row.workspace_id,
+            name: row.name,
+            kind: row.kind,
+            createdAt: row.created_at,
+            sourceWorkflowId: row.source_workflow_id ?? null,
+            sourceWorkflowName: row.source_workflow_name ?? null,
+            sourceExecutionId: row.source_execution_id ?? null,
+            executedAt: row.executed_at ?? null
+          }) as Dataset
+      )
       .filter((d) => !kinds || kinds.includes(d.kind))
       .map((d) => ({ ...d, latestVersion: this.latestDatasetVersion(d.id) }));
   }
