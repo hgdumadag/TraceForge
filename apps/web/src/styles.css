@@ -238,15 +238,34 @@ table.grid tr.clickable:hover td { background: var(--bg-panel); }
 .inspector.collapsed .inspector-head { justify-content: center; }
 
 .tf-node {
-  background: var(--bg-panel-2); border: 1.5px solid var(--border); border-radius: 8px;
-  padding: 8px 12px; min-width: 150px; font-size: 12px; color: var(--text);
+  --node-ink: var(--accent); --node-chip: var(--tint-blue-bg);
+  background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 11px 13px; min-width: 200px; max-width: 270px; font-size: 12px; color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
-.tf-node .type { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+.node-row { display: flex; gap: 10px; align-items: center; }
+.node-chip {
+  width: 30px; height: 30px; border-radius: 7px; background: var(--node-chip); color: var(--node-ink);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.node-body { min-width: 0; }
+.node-cat { font-size: 9.5px; letter-spacing: 0.6px; color: var(--node-ink); }
+.node-title { font-weight: 600; font-size: 13px; margin-top: 1px; }
+.node-stats { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.node-ports-hint { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+.tf-node .react-flow__handle {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--bg-panel-2); border: 1.5px solid var(--edge);
+}
+.tf-node .react-flow__handle-right { border-color: var(--node-ink); }
 .tf-node.status-running { border-color: var(--amber); box-shadow: 0 0 8px rgba(217,161,60,0.4); }
 .tf-node.status-succeeded { border-color: var(--green); }
 .tf-node.status-failed { border-color: var(--red); }
 .tf-node.status-skipped { opacity: 0.55; }
-.tf-node.selected { border-color: var(--accent); }
+.tf-node.selected {
+  border-color: var(--node-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-ink) 22%, transparent), 0 8px 20px rgba(0, 0, 0, 0.25);
+}
 .tf-note {
   position: relative;
   background: var(--note-bg); border: 1px solid var(--note-border); border-radius: 8px; padding: 10px;

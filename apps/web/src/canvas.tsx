@@ -20,6 +20,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { NODE_TYPES, getNodeType, newId } from "@traceforge/domain";
 import { useTheme } from "./theme";
+import { catColor, NodeIcon } from "./nodevisuals";
 
 export interface CanvasGraph {
   nodes: { id: string; type: string; label?: string; position: { x: number; y: number }; config: any; ui?: any }[];
@@ -31,37 +32,46 @@ function TfNode({ data, selected }: any) {
   const def = getNodeType(data.nodeType);
   const inputs = def?.inputs ?? [];
   const outputs = def?.outputs ?? [];
+  const { ink, bg } = catColor(def?.category);
   return (
-    <div className={`tf-node status-${data.status ?? "idle"} ${selected ? "selected" : ""}`}>
+    <div
+      className={`tf-node status-${data.status ?? "idle"} ${selected ? "selected" : ""}`}
+      style={{ "--node-ink": ink, "--node-chip": bg } as any}
+    >
       {inputs.map((p, i) => (
         <Handle
           key={p.name}
           type="target"
           id={p.name}
           position={Position.Left}
-          style={{ top: `${((i + 1) / (inputs.length + 1)) * 100}%`, background: "var(--accent)" }}
+          style={{ top: `${((i + 1) / (inputs.length + 1)) * 100}%` }}
           title={p.name}
         />
       ))}
-      <div className="type">{def?.category} · {def?.label}</div>
-      <div style={{ fontWeight: 600 }}>{data.label}</div>
-      {inputs.length > 1 && (
-        <div className="small dim">{inputs.map((p) => p.name).join(" | ")}</div>
-      )}
-      {data.status && data.status !== "idle" && <div className={`badge ${data.status}`} style={{ marginTop: 4 }}>{data.status}</div>}
+      <div className="node-row">
+        <span className="node-chip">
+          <NodeIcon type={data.nodeType} />
+        </span>
+        <div className="node-body">
+          <div className="node-cat mono">
+            {def ? `${def.category} · ${def.label}`.toUpperCase() : String(data.nodeType).toUpperCase()}
+          </div>
+          <div className="node-title">{data.label}</div>
+          {inputs.length > 1 && <div className="node-ports-hint">{inputs.map((p) => p.name).join(" | ")}</div>}
+          {outputs.length > 1 && <div className="node-ports-hint">→ {outputs.map((p) => p.name).join(" | ")}</div>}
+        </div>
+      </div>
+      {data.status && data.status !== "idle" && <div className={`badge ${data.status}`} style={{ marginTop: 6 }}>{data.status}</div>}
       {outputs.map((p, i) => (
         <Handle
           key={p.name}
           type="source"
           id={p.name}
           position={Position.Right}
-          style={{ top: `${((i + 1) / (outputs.length + 1)) * 100}%`, background: "var(--green)" }}
+          style={{ top: `${((i + 1) / (outputs.length + 1)) * 100}%` }}
           title={p.name}
         />
       ))}
-      {outputs.length > 1 && (
-        <div className="small dim" style={{ textAlign: "right" }}>{outputs.map((p) => p.name).join(" | ")}</div>
-      )}
     </div>
   );
 }
