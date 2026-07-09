@@ -220,12 +220,24 @@ table.grid tr.clickable:hover td { background: var(--bg-panel); }
   width: 200px; background: var(--bg-panel); border-right: 1px solid var(--border);
   overflow-y: auto; padding: 10px; flex-shrink: 0;
 }
-.palette h4 { margin: 10px 0 4px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.5px; }
-.palette-item {
-  padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 4px;
-  cursor: grab; font-size: 12px; background: var(--bg-panel-2);
+.palette h4 {
+  margin: 12px 4px 4px; font-size: 10.5px; text-transform: uppercase; color: var(--text-dim);
+  letter-spacing: 0.8px; display: flex; justify-content: space-between; align-items: baseline;
 }
-.palette-item:hover { border-color: var(--accent-2); }
+.palette h4 .count { opacity: 0.6; font-weight: 400; }
+.palette-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border-radius: 7px; margin-bottom: 2px;
+  cursor: pointer; font-size: 12.5px;
+}
+.palette-item:hover { background: var(--bg-panel-2); }
+.palette-icon { display: flex; flex-shrink: 0; }
+.palette-search {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); margin-bottom: 4px;
+}
+.palette-search input { border: none; background: none; padding: 0; flex: 1; min-width: 0; font-size: 12.5px; }
+.palette-search input:focus { outline: none; border: none; }
 .canvas-area { flex: 1; position: relative; min-width: 0; }
 .inspector {
   width: 340px; background: var(--bg-panel); border-left: 1px solid var(--border);

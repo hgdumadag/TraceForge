@@ -188,10 +188,18 @@ export function Palette({ onAdd, readOnly }: { onAdd: (type: string) => void; re
 
   return (
     <div className="palette">
-      <input placeholder="Search tools…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%" }} />
+      <div className="palette-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.5, flexShrink: 0 }} aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input placeholder="Search tools…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
       {[...groups.entries()].map(([cat, types]) => (
         <div key={cat}>
-          <h4>{cat}</h4>
+          <h4>
+            {cat} <span className="count">{types.length}</span>
+          </h4>
           {types.map((t) => (
             <div
               key={t.type}
@@ -200,15 +208,21 @@ export function Palette({ onAdd, readOnly }: { onAdd: (type: string) => void; re
               onClick={() => !readOnly && onAdd(t.type)}
               style={readOnly ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
             >
-              {t.label}
-              {t.requiresNetwork ? " 🌐" : ""}
+              <span className="palette-icon" style={{ color: catColor(t.category).ink }}>
+                <NodeIcon type={t.type} />
+              </span>
+              <span>{t.label}</span>
+              {t.requiresNetwork ? <span title="requires network">🌐</span> : null}
             </div>
           ))}
         </div>
       ))}
       <h4>Canvas</h4>
       <div className="palette-item" onClick={() => !readOnly && onAdd("__note")} style={readOnly ? { opacity: 0.5 } : undefined}>
-        Sticky note
+        <span className="palette-icon" style={{ color: "var(--note-text)" }}>
+          <NodeIcon type="__note" />
+        </span>
+        <span>Sticky note</span>
       </div>
     </div>
   );
