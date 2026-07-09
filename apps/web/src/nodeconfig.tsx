@@ -356,12 +356,19 @@ function NodeForm(props: FormProps & { nodeType: string }) {
     case "join":
       return (
         <>
-          <Field label="Join type">
-            <select value={cfg.joinType ?? "inner"} onChange={(e) => set({ joinType: e.target.value })}>
-              <option value="inner">Inner — only matches</option>
-              <option value="left">Left — keep all left rows</option>
-              <option value="full">Full outer — keep everything</option>
-            </select>
+          <Field label="Join type" hint="inner: only matches · left: keep all left rows · full: keep everything">
+            <div className="seg">
+              {([["inner", "Inner"], ["left", "Left"], ["full", "Full"]] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`seg-btn ${(cfg.joinType ?? "inner") === value ? "active" : ""}`}
+                  onClick={() => set({ joinType: value })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </Field>
           <ListEditor
             items={cfg.keys ?? []}

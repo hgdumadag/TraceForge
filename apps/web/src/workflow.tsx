@@ -505,23 +505,26 @@ function CanvasTab({
                 <div style={{ marginTop: 14 }}>
                   <h3>Last run outputs</h3>
                   {Object.entries(selectedOutputs).map(([handle, dsvId]) => (
-                    <button
-                      key={handle}
-                      className="small"
-                      style={{ marginRight: 6, marginBottom: 6 }}
-                      onClick={() =>
-                        setPreviewDsv({
-                          id: dsvId,
-                          label: `${(selectedNode.data as any).label} → ${handle}`,
-                          chartType:
-                            (selectedNode.data as any).nodeType === "chart"
-                              ? ((selectedNode.data as any).config?.chartType ?? "bar")
-                              : undefined
-                        })
-                      }
-                    >
-                      Preview: {handle}
-                    </button>
+                    <span key={handle} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginRight: 8, marginBottom: 6 }}>
+                      <button
+                        className="small"
+                        onClick={() =>
+                          setPreviewDsv({
+                            id: dsvId,
+                            label: `${(selectedNode.data as any).label} → ${handle}`,
+                            chartType:
+                              (selectedNode.data as any).nodeType === "chart"
+                                ? ((selectedNode.data as any).config?.chartType ?? "bar")
+                                : undefined
+                          })
+                        }
+                      >
+                        Preview: {handle}
+                      </button>
+                      {selectedId && nodeSummaries[selectedId]?.[handle] && (
+                        <span className="chip mono">{fmtInt(nodeSummaries[selectedId][handle].rows)} rows</span>
+                      )}
+                    </span>
                   ))}
                 </div>
               )}
