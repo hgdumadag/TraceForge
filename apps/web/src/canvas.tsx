@@ -24,7 +24,7 @@ import { useTheme } from "./theme";
 export interface CanvasGraph {
   nodes: { id: string; type: string; label?: string; position: { x: number; y: number }; config: any; ui?: any }[];
   edges: { id: string; source: string; sourceHandle?: string; target: string; targetHandle?: string }[];
-  annotations: { id: string; kind: "note" | "group"; text?: string; position: { x: number; y: number }; size?: { width: number; height: number } }[];
+  annotations: { id: string; kind: "note" | "group"; text?: string; position: { x: number; y: number }; size?: { width: number; height: number }; fontSize?: number }[];
 }
 
 function TfNode({ data, selected }: any) {
@@ -66,10 +66,22 @@ function TfNode({ data, selected }: any) {
   );
 }
 
+const NOTE_MIN_FONT = 10;
+const NOTE_MAX_FONT = 24;
+
 function TfNote({ data, selected }: any) {
+  const fontSize = data.fontSize ?? 12;
+  const showToolbar = !!selected && !data.readOnly;
+  const bumpFont = (delta: number) => data.onFontSizeChange?.(Math.min(NOTE_MAX_FONT, Math.max(NOTE_MIN_FONT, fontSize + delta)));
   return (
-    <div className="tf-note">
-      <NodeResizer minWidth={140} minHeight={80} isVisible={!!selected && !data.readOnly} color="var(--accent)" />
+    <div className="tf-note" style={{ fontSize }}>
+      <NodeResizer minWidth={140} minHeight={40} isVisible={!!selected && !data.readOnly} color="var(--accent)" />
+      {showToolbar && (
+        <div className="tf-note-toolbar nodrag">
+          <button type="button" title="Decrease font size" disabled={fontSize <= NOTE_MIN_FONT} onClick={() => bumpFont(-2)}>A-</button>
+          <button type="button" title="Increase font size" disabled={fontSize >= NOTE_MAX_FONT} onClick={() => bumpFont(2)}>A+</button>
+        </div>
+      )}
       {data.readOnly ? (
         <div className="tf-note-text">{data.text || "(empty note)"}</div>
       ) : (
@@ -100,7 +112,7 @@ export function toRfGraph(graph: CanvasGraph, statuses: Record<string, string>):
       position: a.position,
       width: a.size?.width ?? 220,
       height: a.size?.height ?? 120,
-      data: { text: a.text ?? "" }
+      data: { text: a.text ?? "", fontSize: a.fontSize }
     });
   }
   const edges: RFEdge[] = graph.edges.map((e) => ({
@@ -126,7 +138,8 @@ export function fromRfGraph(nodes: RFNode[], edges: RFEdge[]): CanvasGraph {
         kind: "note",
         text: (n.data as any).text,
         position: n.position,
-        size: width && height ? { width, height } : undefined
+        size: width && height ? { width, height } : undefined,
+        fontSize: (n.data as any).fontSize
       });
     } else {
       graph.nodes.push({
@@ -235,14 +248,30 @@ export function FlowCanvas({
     [setRfNodes, onDirty]
   );
 
+  const onNoteFontSizeChange = useCallback(
+    (id: string, fontSize: number) => {
+      setRfNodes((nodes) => nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, fontSize } } : n)));
+      onDirty();
+    },
+    [setRfNodes, onDirty]
+  );
+
   const renderNodes = useMemo(
     () =>
       rfNodes.map((n) =>
         n.type === "tfNote"
-          ? { ...n, data: { ...n.data, readOnly, onTextChange: (text: string) => onNoteTextChange(n.id, text) } }
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                readOnly,
+                onTextChange: (text: string) => onNoteTextChange(n.id, text),
+                onFontSizeChange: (fontSize: number) => onNoteFontSizeChange(n.id, fontSize)
+              }
+            }
           : n
       ),
-    [rfNodes, readOnly, onNoteTextChange]
+    [rfNodes, readOnly, onNoteTextChange, onNoteFontSizeChange]
   );
 
   const onEdgesChange = useCallback(

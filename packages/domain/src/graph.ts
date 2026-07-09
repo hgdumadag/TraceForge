@@ -31,7 +31,8 @@ export const CanvasAnnotationSchema = z.object({
   text: z.string().optional(),
   position: z.object({ x: z.number(), y: z.number() }),
   size: z.object({ width: z.number(), height: z.number() }).optional(),
-  color: z.string().optional()
+  color: z.string().optional(),
+  fontSize: z.number().min(10).max(28).optional()
 });
 export type CanvasAnnotation = z.infer<typeof CanvasAnnotationSchema>;
 
