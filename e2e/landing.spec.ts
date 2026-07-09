@@ -40,3 +40,24 @@ test("sidebar logo navigates back to the landing page", async ({ page }) => {
   await expect(page).toHaveURL(/#\/$/);
   await expect(page.getByRole("heading", { name: "Audit analytics you can build, trust, and reuse." })).toBeVisible();
 });
+
+test("Features link scrolls to the feature section without leaving the landing page", async ({ page }) => {
+  await page.goto("/#/");
+  await page.getByRole("link", { name: "Features" }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.getByRole("heading", { name: "A canvas, not code" })).toBeInViewport();
+});
+
+test("How it works link scrolls to the feature section without leaving the landing page", async ({ page }) => {
+  await page.goto("/#/");
+  await page.getByRole("link", { name: "How it works", exact: true }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.getByRole("heading", { name: "A canvas, not code" })).toBeInViewport();
+});
+
+test("See how it works link scrolls to the feature section without leaving the landing page", async ({ page }) => {
+  await page.goto("/#/");
+  await page.getByRole("link", { name: "See how it works" }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.getByRole("heading", { name: "A canvas, not code" })).toBeInViewport();
+});
