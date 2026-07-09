@@ -343,3 +343,11 @@ ul.plain li { padding: 3px 0; }
 .react-flow__edge.selected .react-flow__edge-path { stroke: var(--accent) !important; }
 .react-flow__edge-text { fill: var(--text-dim); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 10.5px; }
 .react-flow__edge-textbg { fill: var(--bg-panel); }
+
+/* Canvas action bar */
+.save-state { font-size: 12.5px; flex: 0 0 auto; }
+.save-state.saved { color: var(--green); }
+.save-state.dirty { color: var(--amber); }
+button.primary.run { background: var(--tint-green-bg); border-color: var(--green); color: var(--green); }
+button.primary.run:hover:not(:disabled) { background: var(--green); color: #fff; }
+.rows-in-play { font-size: 12.5px; color: var(--text-dim); flex: 0 0 auto; }

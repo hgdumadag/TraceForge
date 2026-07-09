@@ -386,9 +386,12 @@ function CanvasTab({
             }
           }}
         >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 5 }}>
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
           Validate
         </button>
-        <button className="primary" onClick={() => setRunOpen(true)}>▶ Run</button>
+        <button className="primary run" onClick={() => setRunOpen(true)}>▶ Run</button>
         {execution && (
           <span className="row" style={{ flex: "0 0 auto" }}>
             <Badge status={execution.status} />
@@ -398,7 +401,12 @@ function CanvasTab({
           </span>
         )}
         <span className="spacer" />
-        {dirty && <span className="dim small">Unsaved changes</span>}
+        {!readOnly &&
+          (dirty ? (
+            <span className="save-state dirty">● Unsaved changes</span>
+          ) : (
+            <span className="save-state saved">● All changes saved</span>
+          ))}
       </div>
       <ErrorBox error={error} />
       <div className="canvas-layout">
