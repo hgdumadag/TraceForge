@@ -92,6 +92,10 @@ function TfNote({ data, selected }: any) {
           <button type="button" title="Increase font size" disabled={fontSize >= NOTE_MAX_FONT} onClick={() => bumpFont(2)}>A+</button>
         </div>
       )}
+      <div className="tf-note-head">
+        <NodeIcon type="__note" size={13} />
+        <span className="mono">NOTE</span>
+      </div>
       {data.readOnly ? (
         <div className="tf-note-text">{data.text || "(empty note)"}</div>
       ) : (
