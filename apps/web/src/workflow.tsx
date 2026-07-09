@@ -381,6 +381,23 @@ function CanvasTab({
     [rfEdges, rfNodes, nodeSummaries]
   );
 
+  // "Rows in play" = rows entering the workflow via source nodes in the last run.
+  const rowsInPlay = useMemo(() => {
+    let total = 0;
+    let found = false;
+    for (const n of rfNodes) {
+      if (n.type !== "tfNode") continue;
+      const def = getNodeType((n.data as any).nodeType);
+      if (!def || def.inputs.length > 0) continue;
+      for (const v of Object.values(nodeSummaries[n.id] ?? {})) {
+        total += v.rows;
+        found = true;
+      }
+    }
+    return found ? total : null;
+  }, [rfNodes, nodeSummaries]);
+  const stepCount = rfNodes.filter((n) => n.type === "tfNode").length;
+
   return (
     <div>
       <div className="toolbar">
@@ -428,6 +445,11 @@ function CanvasTab({
           </span>
         )}
         <span className="spacer" />
+        {rowsInPlay !== null && (
+          <span className="rows-in-play">
+            {fmtInt(rowsInPlay)} rows in play across {stepCount} {stepCount === 1 ? "step" : "steps"}
+          </span>
+        )}
         {!readOnly &&
           (dirty ? (
             <span className="save-state dirty">● Unsaved changes</span>
