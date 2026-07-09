@@ -65,6 +65,10 @@ export interface RuntimeDeps {
   paths: AppPaths;
   gateway: LlmGateway;
   actor: string;
+  sourceWorkflowId: string;
+  sourceWorkflowName: string;
+  sourceExecutionId: string;
+  executedAt: string;
 }
 
 export class ApiNodeRuntime implements NodeRuntime {
@@ -84,7 +88,12 @@ export class ApiNodeRuntime implements NodeRuntime {
     info: { rowCount: number; columns: { name: string; type: string }[]; contentHash: string },
     path: string
   ): PortData {
-    const dataset = this.deps.store.createDataset(`${nodeLabel} — ${handle}`, "node_output");
+    const dataset = this.deps.store.createDataset(`${nodeLabel} — ${handle}`, "node_output", {
+      sourceWorkflowId: this.deps.sourceWorkflowId,
+      sourceWorkflowName: this.deps.sourceWorkflowName,
+      sourceExecutionId: this.deps.sourceExecutionId,
+      executedAt: this.deps.executedAt
+    });
     const dsv = this.deps.store.createDatasetVersion({
       datasetId: dataset.id,
       storagePath: path,
