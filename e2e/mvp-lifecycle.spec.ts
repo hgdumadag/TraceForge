@@ -27,7 +27,7 @@ async function fillRunParameters(page: Page) {
 }
 
 test("catalog shows empty state and blank creation validates the name", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await expect(page.getByRole("heading", { name: "Workflow Catalog" })).toBeVisible();
   await expect(page.getByText("No workflows yet")).toBeVisible();
 
@@ -59,7 +59,7 @@ test("clone the Travel & Expense template with preview details", async ({ page }
 });
 
 test("run the workflow: live node statuses, output preview, exceptions", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await page.getByRole("cell", { name: WF_NAME }).click();
 
   await page.getByRole("button", { name: "▶ Run" }).click();
@@ -81,7 +81,7 @@ test("run the workflow: live node statuses, output preview, exceptions", async (
 });
 
 test("run history records the execution with node results and evidence", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await page.getByRole("cell", { name: WF_NAME }).click();
   await page.getByRole("button", { name: "Run History" }).click();
 
@@ -97,7 +97,7 @@ test("run history records the execution with node results and evidence", async (
 });
 
 test("verification: submit, tester/reviewer, sample run, pass", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await page.getByRole("cell", { name: WF_NAME }).click();
 
   // Submit for review from the Versions tab.
@@ -126,7 +126,7 @@ test("verification: submit, tester/reviewer, sample run, pass", async ({ page })
 });
 
 test("only verified versions activate; activation marks the workflow active", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await page.getByRole("cell", { name: WF_NAME }).click();
   await page.getByRole("button", { name: "Versions" }).click();
 
@@ -134,14 +134,14 @@ test("only verified versions activate; activation marks the workflow active", as
   await expect(page.locator("table.grid .badge.active").first()).toBeVisible();
 
   // Catalog reflects the active version and verification status.
-  await page.goto("/");
+  await page.goto("/#/workflows");
   const row = page.locator("tr", { hasText: WF_NAME });
   await expect(row.locator(".badge.verified")).toBeVisible();
   await expect(row.getByText("v1")).toBeVisible();
 });
 
 test("publish to toolkit and clone the published tool to a new draft", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await page.getByRole("cell", { name: WF_NAME }).click();
   await page.getByRole("button", { name: "Versions" }).click();
 
@@ -160,7 +160,7 @@ test("publish to toolkit and clone the published tool to a new draft", async ({ 
 });
 
 test("editing an active version creates a new draft instead of mutating it", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/workflows");
   await page.getByRole("cell", { name: WF_NAME, exact: true }).click();
 
   // Active version is read-only on the canvas.
