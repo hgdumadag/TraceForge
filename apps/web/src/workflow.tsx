@@ -119,16 +119,19 @@ function CanvasTab({
   const [execution, setExecution] = useState<any>(null);
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
   const [nodeOutputs, setNodeOutputs] = useState<Record<string, Record<string, string>>>({});
+  const [nodeSummaries, setNodeSummaries] = useState<Record<string, Record<string, { rows: number; columns: number }>>>({});
   const [previewDsv, setPreviewDsv] = useState<{ id: string; label: string; chartType?: string } | null>(null);
   const [upstreamCols, setUpstreamCols] = useState<Record<string, string>>({});
   const sseClose = useRef<(() => void) | null>(null);
 
-  // Apply node execution statuses onto canvas nodes.
+  // Apply node execution statuses + row-count summaries onto canvas nodes.
   useEffect(() => {
     setRfNodes((nodes) =>
-      nodes.map((n) => (n.type === "tfNode" ? { ...n, data: { ...n.data, status: nodeStatuses[n.id] } } : n))
+      nodes.map((n) =>
+        n.type === "tfNode" ? { ...n, data: { ...n.data, status: nodeStatuses[n.id], summary: nodeSummaries[n.id] } } : n
+      )
     );
-  }, [nodeStatuses]);
+  }, [nodeStatuses, nodeSummaries]);
 
   // Inspector collapses when nothing is selected (nothing to configure) and expands the
   // moment a node is selected. The user can still toggle it manually at any time — collapsing
@@ -326,6 +329,7 @@ function CanvasTab({
     }
     setRunOpen(false);
     setNodeStatuses({});
+    setNodeSummaries({});
     setError(null);
     try {
       const exec = await api.post<any>(`/api/versions/${version.id}/run`, { parameterValues });
@@ -336,6 +340,17 @@ function CanvasTab({
           setNodeStatuses((s) => ({ ...s, [event.data.nodeId]: event.data.status }));
           if (event.data.outputDatasetVersionIds && Object.keys(event.data.outputDatasetVersionIds).length) {
             setNodeOutputs((o) => ({ ...o, [event.data.nodeId]: event.data.outputDatasetVersionIds }));
+          }
+          if (event.data.outputSummary) {
+            // outputSummary mixes handle entries ({rows, columns}) with node-specific
+            // summary keys of other shapes — keep only the handle entries.
+            const clean: Record<string, { rows: number; columns: number }> = {};
+            for (const [k, v] of Object.entries<any>(event.data.outputSummary)) {
+              if (v && typeof v === "object" && typeof v.rows === "number" && typeof v.columns === "number") {
+                clean[k] = { rows: v.rows, columns: v.columns };
+              }
+            }
+            if (Object.keys(clean).length) setNodeSummaries((s) => ({ ...s, [event.data.nodeId]: clean }));
           }
           if (event.data.error) setError((prev) => prev ?? event.data.error);
         }

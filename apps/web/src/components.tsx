@@ -38,6 +38,9 @@ export function duration(start: string | null | undefined, end: string | null | 
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** 1234567 → "1,234,567" (row/column counts on the canvas). */
+export const fmtInt = (n: number): string => n.toLocaleString("en-US");
+
 /** Read-only data preview grid for a dataset version (features/data-preview.md).
  * When `chartType` is set (Chart node outputs), the chart renders above the table. */
 export function DataPreview({ datasetVersionId, rows: limit = 100, chartType }: { datasetVersionId: string; rows?: number; chartType?: string }) {

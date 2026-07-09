@@ -21,6 +21,7 @@ import "@xyflow/react/dist/style.css";
 import { NODE_TYPES, getNodeType, newId } from "@traceforge/domain";
 import { useTheme } from "./theme";
 import { catColor, NodeIcon } from "./nodevisuals";
+import { fmtInt } from "./components";
 
 export interface CanvasGraph {
   nodes: { id: string; type: string; label?: string; position: { x: number; y: number }; config: any; ui?: any }[];
@@ -33,6 +34,14 @@ function TfNode({ data, selected }: any) {
   const inputs = def?.inputs ?? [];
   const outputs = def?.outputs ?? [];
   const { ink, bg } = catColor(def?.category);
+  const summary: Record<string, { rows: number; columns: number }> | undefined = data.summary;
+  const entries = summary ? Object.entries(summary) : [];
+  const statsLine =
+    entries.length === 1
+      ? `${fmtInt(entries[0][1].rows)} rows · ${entries[0][1].columns} cols`
+      : entries.length > 1
+        ? entries.map(([h, v]) => `${h} ${fmtInt(v.rows)}`).join(" · ")
+        : null;
   return (
     <div
       className={`tf-node status-${data.status ?? "idle"} ${selected ? "selected" : ""}`}
@@ -57,6 +66,7 @@ function TfNode({ data, selected }: any) {
             {def ? `${def.category} · ${def.label}`.toUpperCase() : String(data.nodeType).toUpperCase()}
           </div>
           <div className="node-title">{data.label}</div>
+          {statsLine && <div className="node-stats">{statsLine}</div>}
           {inputs.length > 1 && <div className="node-ports-hint">{inputs.map((p) => p.name).join(" | ")}</div>}
           {outputs.length > 1 && <div className="node-ports-hint">→ {outputs.map((p) => p.name).join(" | ")}</div>}
         </div>
