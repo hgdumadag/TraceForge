@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Node as RFNode, Edge as RFEdge } from "@xyflow/react";
 import { getNodeType, newId } from "@traceforge/domain";
 import { api, type VersionRow } from "./api";
-import { Badge, ErrorBox, Modal, DataPreview, ParameterInputs, fmtDate, duration } from "./components";
+import { Badge, ErrorBox, Modal, DataPreview, ParameterInputs, fmtDate, duration, fmtInt } from "./components";
 import { FlowCanvas, Palette, toRfGraph, fromRfGraph } from "./canvas";
 import { NodeConfigPanel } from "./nodeconfig";
 
@@ -369,6 +369,18 @@ function CanvasTab({
 
   const selectedOutputs = selectedId ? nodeOutputs[selectedId] : undefined;
 
+  // Edge labels: rows produced by the source port in the last run (render-only; not persisted).
+  const labeledEdges = useMemo(
+    () =>
+      rfEdges.map((e) => {
+        const srcType = (rfNodes.find((n) => n.id === e.source)?.data as any)?.nodeType as string | undefined;
+        const handle = e.sourceHandle ?? getNodeType(srcType ?? "")?.outputs[0]?.name ?? "output";
+        const s = nodeSummaries[e.source]?.[handle];
+        return s ? { ...e, label: `${fmtInt(s.rows)} rows` } : e;
+      }),
+    [rfEdges, rfNodes, nodeSummaries]
+  );
+
   return (
     <div>
       <div className="toolbar">
@@ -428,7 +440,7 @@ function CanvasTab({
         <Palette onAdd={addNode} readOnly={readOnly} />
         <FlowCanvas
           rfNodes={rfNodes}
-          rfEdges={rfEdges}
+          rfEdges={labeledEdges}
           setRfNodes={(u) => setRfNodes(u)}
           setRfEdges={(u) => setRfEdges(u)}
           onSelect={setSelectedId}
