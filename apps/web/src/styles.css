@@ -26,6 +26,16 @@
   --note-text: #e8e0b8;
   --backdrop: rgba(0, 0, 0, 0.6);
   --canvas-dot: #232b34;
+  --edge: #4a5866;
+  /* Category hues (design "Audit Canvas Options" 1A): ink = icon/label color, bg = icon chip fill. */
+  --cat-import: oklch(75% 0.13 250);     --cat-import-bg: oklch(28% 0.05 250);
+  --cat-clean: oklch(75% 0.11 190);      --cat-clean-bg: oklch(28% 0.05 190);
+  --cat-merge: oklch(75% 0.13 300);      --cat-merge-bg: oklch(30% 0.06 300);
+  --cat-transform: oklch(75% 0.12 145);  --cat-transform-bg: oklch(28% 0.05 145);
+  --cat-code: oklch(78% 0.12 75);        --cat-code-bg: oklch(30% 0.05 75);
+  --cat-visualize: oklch(75% 0.12 340);  --cat-visualize-bg: oklch(30% 0.05 340);
+  --cat-governance: oklch(75% 0.06 230); --cat-governance-bg: oklch(28% 0.03 230);
+  --cat-ai: oklch(75% 0.12 315);         --cat-ai-bg: oklch(30% 0.05 315);
   --radius: 8px;
   font-size: 14px;
 }
@@ -60,6 +70,16 @@
   --note-text: #57502e;
   --backdrop: rgba(15, 20, 25, 0.35);
   --canvas-dot: #c8d2dd;
+  --edge: #9fb0c0;
+  /* Light theme (design 1B): darker inks for ≥4.5:1 contrast, pale chip fills. */
+  --cat-import: oklch(45% 0.13 250);     --cat-import-bg: oklch(93% 0.03 250);
+  --cat-clean: oklch(42% 0.10 190);      --cat-clean-bg: oklch(92% 0.03 190);
+  --cat-merge: oklch(44% 0.14 300);      --cat-merge-bg: oklch(93% 0.04 300);
+  --cat-transform: oklch(42% 0.12 145);  --cat-transform-bg: oklch(92% 0.03 145);
+  --cat-code: oklch(45% 0.11 75);        --cat-code-bg: oklch(93% 0.04 75);
+  --cat-visualize: oklch(45% 0.13 340);  --cat-visualize-bg: oklch(93% 0.03 340);
+  --cat-governance: oklch(44% 0.06 230); --cat-governance-bg: oklch(93% 0.02 230);
+  --cat-ai: oklch(45% 0.13 315);         --cat-ai-bg: oklch(93% 0.03 315);
 }
 
 * { box-sizing: border-box; }
