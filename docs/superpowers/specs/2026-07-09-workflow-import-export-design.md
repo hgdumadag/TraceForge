@@ -49,7 +49,7 @@ A stable envelope, versioned independently of internal DB/API shapes so exported
 
 Validation, in order, nothing persisted until all steps pass:
 1. **Envelope shape** — `formatVersion`, `workflow.name`, `workflow.category`, `version.graph`, `version.parameters` all present. Missing/malformed → `400` with a specific message.
-2. **`formatVersion` check** — if the file declares a version newer than this app supports → `422`, `"This file was exported from a newer version of TraceForge and can't be imported here."`
+2. **`formatVersion` check** — if the file declares a version newer than this app supports → `422`, `"This file was exported from a newer version of TraceForge and can't be imported here."` Any `formatVersion` less than or equal to the app's supported version is accepted (this design defines only `formatVersion: 1`, so today that means exactly `1`).
 3. **Graph validation** — the embedded `graph` runs through the existing `validateGraph()` (`packages/domain/src/graph.ts`), the same gate `PUT /api/versions/:id` already uses (unknown node types, cycles, missing required inputs, bad edge references). Failure → `422` with the same structured error shape the in-app editor already surfaces.
 4. **Persist** — `createWorkflow` + version-creation, reusing the same store functions the normal `POST /api/workflows` path uses, wrapped in one DB transaction. Either both rows are written, or neither is.
 
