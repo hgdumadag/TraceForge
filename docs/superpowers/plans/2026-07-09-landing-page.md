@@ -120,8 +120,10 @@ Replace the logo `div` — change:
 to:
 
 ```tsx
-          <button className="logo-link" onClick={() => navigate("#/")}>Trace<span>Forge</span></button>
+          <button className="logo logo-link" onClick={() => navigate("#/")}>Trace<span>Forge</span></button>
 ```
+
+(Keep the `logo` class alongside the new `logo-link` class — `landing.tsx` in Task 2 also renders a plain, non-interactive `<div className="logo">` for its own header, so the `.logo` typography rule must keep existing for both.)
 
 Add the early-return landing branch right after the `sidebarCollapsed` effect and before the `const nav = [...]` line:
 
@@ -140,42 +142,17 @@ Add the early-return landing branch right after the `sidebarCollapsed` effect an
 
 The rest of `App.tsx` (the `main`/`workflowMatch`/`hash === "#/templates"`/etc. ternary chain, ending in the `CatalogPage` fallback) is unchanged — `CatalogPage` naturally becomes the view for `#/workflows` (and any other unmatched hash) since `#/` now returns early above.
 
-- [ ] **Step 5: Add the `.logo-link` style and remove the now-unused `.logo` div style**
+- [ ] **Step 5: Add a `.logo-link` style that layers button-reset rules onto the existing `.logo` look**
 
-Modify `apps/web/src/styles.css`. Change:
+Modify `apps/web/src/styles.css`. The sidebar button keeps the `logo` class (Step 4), so its typography is unaffected — this step only adds the button-reset additions via a new `.logo-link` rule, placed right after the existing `.logo span` rule:
 
 ```css
-.sidebar.collapsed .logo, .sidebar.collapsed .navlink, .sidebar.collapsed .foot { display: none; }
-.sidebar-head { display: flex; align-items: flex-start; justify-content: space-between; }
-.sidebar.collapsed .sidebar-head { justify-content: center; }
-.sidebar-toggle {
-  background: none; border: none; color: var(--text-dim); cursor: pointer;
-  padding: 4px 8px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; line-height: 1;
-}
-.sidebar-toggle:hover { background: var(--bg-panel-2); color: var(--text); border: none; }
-.sidebar.collapsed .theme-toggle { display: none; }
 .logo { font-weight: 700; font-size: 17px; padding: 4px 10px 14px; letter-spacing: 0.3px; white-space: nowrap; }
 .logo span { color: var(--accent); }
+.logo-link { background: none; border: none; color: var(--text); cursor: pointer; text-align: left; font-family: inherit; }
 ```
 
-to:
-
-```css
-.sidebar.collapsed .logo-link, .sidebar.collapsed .navlink, .sidebar.collapsed .foot { display: none; }
-.sidebar-head { display: flex; align-items: flex-start; justify-content: space-between; }
-.sidebar.collapsed .sidebar-head { justify-content: center; }
-.sidebar-toggle {
-  background: none; border: none; color: var(--text-dim); cursor: pointer;
-  padding: 4px 8px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; line-height: 1;
-}
-.sidebar-toggle:hover { background: var(--bg-panel-2); color: var(--text); border: none; }
-.sidebar.collapsed .theme-toggle { display: none; }
-.logo-link {
-  font-weight: 700; font-size: 17px; padding: 4px 10px 14px; letter-spacing: 0.3px; white-space: nowrap;
-  background: none; border: none; color: var(--text); cursor: pointer; text-align: left; font-family: inherit;
-}
-.logo-link span { color: var(--accent); }
-```
+`.sidebar.collapsed .logo, .sidebar.collapsed .navlink, .sidebar.collapsed .foot { display: none; }` (further up in the file) needs no change — the sidebar button still carries the `logo` class, so it's still hidden on collapse.
 
 Add a minimal placeholder rule for the new `.landing` stub at the end of the file (Task 2 replaces this with the full styling):
 
