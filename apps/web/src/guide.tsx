@@ -23,6 +23,38 @@ function ExprBlock({ items }: { items: { expr: string; note: string }[] }) {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="guide-crumb-chevron">
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5v.01" />
+    </svg>
+  );
+}
+
+function WarnIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3.5l8.5 15.5H3.5z" /><path d="M12 10v4M12 17v.01" />
+    </svg>
+  );
+}
+
 /** Curated notes + sample expressions per node type, merged into the generated reference. */
 const NODE_NOTES: Record<string, { usesExpressions?: boolean; how: ReactNode; samples?: { expr: string; note: string }[] }> = {
   import_file: {
@@ -66,14 +98,15 @@ const NODE_NOTES: Record<string, { usesExpressions?: boolean; how: ReactNode; sa
   },
   add_columns: {
     usesExpressions: true,
-    how: <>Adds calculated columns; existing columns cannot be overwritten here (use Overwrite Columns for that). Each new column has a name and an expression.</>,
+    how: <>Adds calculated columns; existing columns cannot be overwritten here (use Overwrite Columns for that). Each new column has a name and an expression. Comparisons produce a <b>true/false</b> boolean column — there's no <Code>if/else</Code> or cast-to-number function, so a numeric <Code>1</Code>/<Code>0</Code> flag isn't possible in an expression. If you need that exact numeric form, use a <b>Python</b> node instead: <Code>rows = [dict(r, **{"{"}"Flag": 1 if r["Column A"] &gt; r["Column B"] else 0{"}"}) for r in rows]</Code></>,
     samples: [
       { expr: 'days_between({Date Expense Incurred}, {Approval Date})', note: "New “Days to Approve” column." },
       { expr: '{Quantity} * {Unit Price}', note: "Computed line total." },
       { expr: 'coalesce({Preferred Name}, {Employee Name})', note: "First non-null of two columns." },
       { expr: 'round({Amount} * 0.12, 2)', note: "12% VAT, rounded to centavos." },
       { expr: 'upper(trim({Cost Center}))', note: "Normalized key for joining." },
-      { expr: '{Amount in USD} > {param!receipt_threshold}', note: "Boolean flag column (true/false)." }
+      { expr: '{Amount in USD} > {param!receipt_threshold}', note: "Boolean flag column (true/false)." },
+      { expr: '{Column A} > {Column B}', note: "Boolean flag (true/false) for “A is greater than B”. For a numeric 1/0 version, use a Python node — see note above." }
     ]
   },
   overwrite_columns: {
@@ -128,9 +161,23 @@ const FUNCTIONS: { sig: string; note: string }[] = [
   { sig: "length(text)", note: "Number of characters." }
 ];
 
-const SECTIONS: { id: string; title: string }[] = [
+type GuideSub = { id: string; title: string; desc: ReactNode };
+type GuideSection = { id: string; title: string; subs?: GuideSub[] };
+
+const SECTIONS: GuideSection[] = [
   { id: "quick-start", title: "Quick start" },
-  { id: "navigation", title: "Navigating the app" },
+  {
+    id: "navigation",
+    title: "Navigating the app",
+    subs: [
+      { id: "nav-workflows", title: "Workflows", desc: "Every audit workflow with its verification status, active version, publisher, and last update. Search, filter, sort, choose visible columns, duplicate, or archive from here." },
+      { id: "nav-templates", title: "Templates", desc: "Built-in audit templates plus tools your team published. Cloning creates a new draft workflow; templates themselves never change." },
+      { id: "nav-datasets", title: "Datasets", desc: "Imported files, manual tables, samples, and node outputs — each with row counts, schema, source fingerprint, preview, column profiling, and CSV/Excel export." },
+      { id: "nav-toolkit", title: "Toolkit", desc: "Approved tools: verified workflow versions published for reuse. Clone one to a new draft, open its source, or unpublish (the source workflow is preserved)." },
+      { id: "nav-settings", title: "Settings", desc: "Your local profile name (recorded on runs, reviews, publishes) and LLM providers. Ollama (local) is the default; cloud providers are opt-in per action." },
+      { id: "nav-guide", title: "Guide", desc: "This page." }
+    ]
+  },
   { id: "lifecycle", title: "Workflows & versions" },
   { id: "canvas", title: "Building on the canvas" },
   { id: "parameters", title: "Parameters" },
@@ -144,18 +191,53 @@ const SECTIONS: { id: string; title: string }[] = [
   { id: "troubleshooting", title: "Troubleshooting" }
 ];
 
+const NAV_SUB_IDS = new Set(SECTIONS.flatMap((s) => s.subs?.map((x) => x.id) ?? []));
+
+/** Prev/next footer shown at the end of every top-level section, mirroring the
+ * section order in the TOC (subsections don't get their own pager stop). */
+function SectionPager({ id, jump }: { id: string; jump: (id: string) => void }) {
+  const idx = SECTIONS.findIndex((s) => s.id === id);
+  const prev = idx > 0 ? SECTIONS[idx - 1] : null;
+  const next = idx >= 0 && idx < SECTIONS.length - 1 ? SECTIONS[idx + 1] : null;
+  return (
+    <div className="guide-pager">
+      {prev ? (
+        <button className="guide-pager-btn prev" onClick={() => jump(prev.id)}>
+          <span className="guide-pager-label">‹ Previous</span>
+          <span className="guide-pager-title">{prev.title}</span>
+        </button>
+      ) : <span />}
+      {next ? (
+        <button className="guide-pager-btn next" onClick={() => jump(next.id)}>
+          <span className="guide-pager-label">Next ›</span>
+          <span className="guide-pager-title">{next.title}</span>
+        </button>
+      ) : <span />}
+    </div>
+  );
+}
+
 export function GuidePage() {
   const [active, setActive] = useState("quick-start");
+  const [activeSub, setActiveSub] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
+    const ids = SECTIONS.flatMap((s) => [s.id, ...(s.subs?.map((x) => x.id) ?? [])]);
     const observer = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) { setActive(e.target.id); break; }
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const id = e.target.id;
+          if (NAV_SUB_IDS.has(id)) { setActiveSub(id); setActive("navigation"); }
+          else { setActive(id); setActiveSub(null); }
+          break;
+        }
       },
-      { rootMargin: "0px 0px -75% 0px" }
+      { rootMargin: "0px 0px -70% 0px" }
     );
-    for (const s of SECTIONS) {
-      const el = document.getElementById(s.id);
+    for (const id of ids) {
+      const el = document.getElementById(id);
       if (el) observer.observe(el);
     }
     return () => observer.disconnect();
@@ -163,18 +245,63 @@ export function GuidePage() {
 
   const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  const q = query.trim().toLowerCase();
+  const visibleSections = !q
+    ? SECTIONS
+    : (SECTIONS.map((s) => {
+        if (s.title.toLowerCase().includes(q)) return s;
+        const subs = s.subs?.filter((x) => x.title.toLowerCase().includes(q));
+        return subs && subs.length ? { ...s, subs } : null;
+      }).filter(Boolean) as GuideSection[]);
+
+  const activeSection = SECTIONS.find((s) => s.id === active);
+  const activeSubTitle = activeSub ? activeSection?.subs?.find((x) => x.id === activeSub)?.title : null;
+
   return (
     <div className="page wide guide-layout">
       <aside className="guide-toc">
         <h3>User Guide</h3>
-        {SECTIONS.map((s) => (
-          <button key={s.id} className={`navlink ${active === s.id ? "active" : ""}`} onClick={() => jump(s.id)}>
-            {s.title}
-          </button>
-        ))}
+        <div className="guide-toc-search">
+          <SearchIcon />
+          <input placeholder="Search the guide…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
+        <nav className="guide-toc-tree">
+          {visibleSections.map((s) => (
+            <div key={s.id}>
+              <button className={`navlink ${active === s.id && !activeSub ? "active" : ""}`} onClick={() => jump(s.id)}>
+                {s.title}
+              </button>
+              {s.subs && (active === s.id || !!q) && (
+                <div className="guide-toc-sub">
+                  {s.subs.map((sub) => (
+                    <button key={sub.id} className={`navlink sub ${activeSub === sub.id ? "active" : ""}`} onClick={() => jump(sub.id)}>
+                      {sub.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
       </aside>
 
       <div className="guide-body">
+        <div className="guide-crumb">
+          <span>Guide</span>
+          {activeSection && (
+            <>
+              <ChevronIcon />
+              <span className={activeSubTitle ? "" : "current"}>{activeSection.title}</span>
+            </>
+          )}
+          {activeSubTitle && (
+            <>
+              <ChevronIcon />
+              <span className="current">{activeSubTitle}</span>
+            </>
+          )}
+        </div>
+
         <h1>TraceForge User Guide</h1>
         <p className="sub">Build, run, verify, and reuse audit analytics workflows — entirely on this machine.</p>
 
@@ -187,19 +314,32 @@ export function GuidePage() {
             <li><b>Inspect results.</b> Select a node and use <b>Preview</b> to see its output tables. The Validate node's <i>exceptions</i> output is your findings list; export it to CSV/Excel.</li>
             <li><b>Make it official.</b> Versions tab → <b>Submit for review</b>, record tester/reviewer, run a sample, <b>Pass</b> → <b>Activate</b> → <b>Publish to toolkit</b>.</li>
           </ol>
+          <SectionPager id="quick-start" jump={jump} />
         </section>
 
         <section id="navigation">
           <h2>Navigating the app</h2>
-          <dl className="kv">
-            <dt>Workflows</dt><dd>The catalog: every audit workflow with its verification status, active version, publisher, and last update. Search, filter, sort, choose visible columns, duplicate, or archive from here.</dd>
-            <dt>Templates</dt><dd>Built-in audit templates plus tools your team published. Cloning creates a new draft workflow; templates themselves never change.</dd>
-            <dt>Datasets</dt><dd>Imported files, manual tables, samples, and node outputs — each with row counts, schema, source fingerprint, preview, column profiling, and CSV/Excel export.</dd>
-            <dt>Toolkit</dt><dd>Approved tools: verified workflow versions published for reuse. Clone one to a new draft, open its source, or unpublish (the source workflow is preserved).</dd>
-            <dt>Settings</dt><dd>Your local profile name (recorded on runs, reviews, publishes) and LLM providers. Ollama (local) is the default; cloud providers are opt-in per action.</dd>
-            <dt>Guide</dt><dd>This page.</dd>
-          </dl>
-          <p className="small dim">Tips: the sidebar auto-collapses in the workflow editor (« / » to toggle). The ☀/☾ button switches light/dark theme.</p>
+          <p className="sub" style={{ margin: "0 0 14px" }}>What each area of TraceForge is for, at a glance.</p>
+          <div className="cards guide-nav-cards">
+            {SECTIONS.find((s) => s.id === "navigation")!.subs!.map((c) => (
+              <div id={c.id} key={c.id} className={`card guide-nav-card ${activeSub === c.id ? "in-view" : ""}`}>
+                <h3>
+                  {c.title}
+                  {activeSub === c.id && <span className="in-view-badge">in view</span>}
+                </h3>
+                <p className="small dim" style={{ margin: 0 }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="guide-callout tip">
+            <InfoIcon />
+            <div><b>Tip</b> — the sidebar auto-collapses in the workflow editor («&nbsp;/&nbsp;» to toggle). The ☀/☾ button switches light/dark theme.</div>
+          </div>
+          <div className="guide-callout note">
+            <WarnIcon />
+            <div><b>Note</b> — datasets are immutable: every import is stored as an append-only, fingerprinted snapshot and can't be deleted. Workflows that reference one always have a valid source to rerun against.</div>
+          </div>
+          <SectionPager id="navigation" jump={jump} />
         </section>
 
         <section id="lifecycle">
@@ -216,6 +356,7 @@ export function GuidePage() {
             <li>To change a verified/active workflow, use <b>New draft from this</b> — a new version number is created from its graph.</li>
           </ul>
           <p><b>Deleting:</b> Archive is the default (evidence and run history preserved; toolkit entries unpublished). Permanent delete only works on drafts that were never run, reviewed, or published.</p>
+          <SectionPager id="lifecycle" jump={jump} />
         </section>
 
         <section id="canvas">
@@ -229,6 +370,7 @@ export function GuidePage() {
             <li><b>Save / Validate / Run</b> from the toolbar. Validate checks structure, configs, and expressions before you ever run. Delete/Backspace removes selected nodes.</li>
             <li>Zoom/pan with the mouse, use the minimap for large flows, and the controls to fit-to-screen.</li>
           </ul>
+          <SectionPager id="canvas" jump={jump} />
         </section>
 
         <section id="parameters">
@@ -241,6 +383,7 @@ export function GuidePage() {
             <li>Values used in each run are captured in run history and evidence.</li>
             <li>Definitions are editable on drafts only; runtime values can always be changed per run.</li>
           </ul>
+          <SectionPager id="parameters" jump={jump} />
         </section>
 
         <section id="expressions">
@@ -267,9 +410,11 @@ export function GuidePage() {
               ))}
             </tbody>
           </table>
-          <div className="info-box" style={{ marginTop: 10 }}>
-            Stuck? Every expression field has an <b>AI assist</b> link — describe the rule in plain language and a validated expression is suggested. Only column names and types are shared with the model, never data rows.
+          <div className="guide-callout tip" style={{ marginTop: 10 }}>
+            <InfoIcon />
+            <div>Stuck? Every expression field has an <b>AI assist</b> link — describe the rule in plain language and a validated expression is suggested. Only column names and types are shared with the model, never data rows.</div>
           </div>
+          <SectionPager id="expressions" jump={jump} />
         </section>
 
         <section id="nodes">
@@ -304,6 +449,7 @@ export function GuidePage() {
               })}
             </div>
           ))}
+          <SectionPager id="nodes" jump={jump} />
         </section>
 
         <section id="running">
@@ -315,6 +461,7 @@ export function GuidePage() {
             <li>Previews are read-only and never modify data; every node output is stored as its own immutable snapshot.</li>
             <li>Cancel a running workflow from the toolbar; the run is recorded as cancelled.</li>
           </ul>
+          <SectionPager id="running" jump={jump} />
         </section>
 
         <section id="history">
@@ -326,6 +473,7 @@ export function GuidePage() {
             <li><b>Rerun</b> repeats a run with the same version and parameters, linked to the original; it's blocked if the original inputs no longer exist.</li>
             <li>Secrets are redacted from logs and evidence automatically. Run history is retained even when a workflow is archived.</li>
           </ul>
+          <SectionPager id="history" jump={jump} />
         </section>
 
         <section id="verification">
@@ -337,6 +485,7 @@ export function GuidePage() {
             <li>The reviewer decides: <b>Pass</b> (→ verified, immutable), <b>Amend</b> (→ back to draft with comments), or <b>Fail</b> (→ rejected).</li>
             <li><b>Activate</b> the verified version. It becomes the workflow's official version; any previous active version is superseded. Activation records who and when.</li>
           </ol>
+          <SectionPager id="verification" jump={jump} />
         </section>
 
         <section id="publish">
@@ -347,6 +496,7 @@ export function GuidePage() {
             <li>Published tools appear in <b>Toolkit</b> and the template library; anyone can <b>clone</b> one into a fresh draft without touching the original.</li>
             <li><b>Unpublish</b> hides the tool but preserves the source workflow, its versions, and all evidence. Archiving a workflow auto-unpublishes its tools.</li>
           </ul>
+          <SectionPager id="publish" jump={jump} />
         </section>
 
         <section id="ai">
@@ -358,6 +508,7 @@ export function GuidePage() {
             <li>What AI can do: draft a workflow from an objective (+ Workflow → AI-assisted draft), suggest expressions inside any expression field, explain expressions, and generate test logic — all outputs are schema-validated and shown for your review before anything is saved.</li>
             <li>What is shared: your description, and column names/types where relevant. Data rows are never sent unless you explicitly opt in on a node; secrets are redacted from every outbound prompt.</li>
           </ul>
+          <SectionPager id="ai" jump={jump} />
         </section>
 
         <section id="troubleshooting">
@@ -372,6 +523,7 @@ export function GuidePage() {
             <dt>AI assist errors</dt><dd>Check Settings → provider health. For Ollama, make sure the Ollama app is running and a model is pulled.</dd>
             <dt>Import from API fails</dt><dd>The node needs Internet and refuses localhost/private addresses by design.</dd>
           </dl>
+          <SectionPager id="troubleshooting" jump={jump} />
         </section>
 
         <p className="small dim" style={{ margin: "30px 0 10px" }}>

@@ -319,13 +319,31 @@ ul.plain li { padding: 3px 0; }
 /* User guide */
 .guide-layout { display: flex; gap: 24px; align-items: flex-start; }
 .guide-toc {
-  position: sticky; top: 20px; width: 200px; flex-shrink: 0;
+  position: sticky; top: 20px; width: 220px; flex-shrink: 0;
   background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 10px; max-height: calc(100vh - 60px); overflow-y: auto;
 }
-.guide-toc h3 { margin: 4px 8px 8px; }
+.guide-toc h3 { margin: 4px 8px 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+.guide-toc-search {
+  display: flex; align-items: center; gap: 7px; padding: 7px 9px; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); margin-bottom: 8px;
+}
+.guide-toc-search input { border: none; background: none; padding: 0; flex: 1; min-width: 0; font-size: 12.5px; }
+.guide-toc-search input:focus { outline: none; border: none; }
+.guide-toc-tree .navlink { font-size: 13px; }
+.guide-toc-sub {
+  margin: 1px 0 4px 14px; padding-left: 10px; border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.guide-toc-sub .navlink { font-size: 12px; padding: 5px 10px; color: var(--text-dim); position: relative; }
+.guide-toc-sub .navlink.active { color: var(--accent); font-weight: 600; background: none; }
+.guide-toc-sub .navlink.active::before {
+  content: ""; position: absolute; left: -11px; top: 50%; transform: translateY(-50%);
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+}
+
 .guide-body { flex: 1; min-width: 0; max-width: 900px; }
-.guide-body section { margin-bottom: 30px; scroll-margin-top: 16px; }
+.guide-body section { margin-bottom: 30px; scroll-margin-top: 46px; }
 .guide-body h2 { border-bottom: 1px solid var(--border); padding-bottom: 6px; }
 .guide-body ul, .guide-body ol { padding-left: 22px; }
 .guide-body li { margin: 5px 0; line-height: 1.5; }
@@ -337,6 +355,47 @@ ul.plain li { padding: 3px 0; }
 .guide-expr { white-space: pre-wrap; color: var(--accent); font-size: 12px; }
 .guide-body .kv { grid-template-columns: 230px 1fr; row-gap: 8px; }
 .guide-body .kv dt { font-weight: 600; color: var(--text); }
+
+.guide-crumb {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 6px;
+  background: var(--bg); padding: 4px 0 10px; margin-bottom: 2px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim);
+}
+.guide-crumb span.current { color: var(--text); font-weight: 600; }
+.guide-crumb-chevron { flex-shrink: 0; opacity: 0.55; }
+
+.guide-nav-cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 14px 0 0; }
+.guide-nav-card { position: relative; scroll-margin-top: 46px; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.guide-nav-card.in-view { border-color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent-2); }
+.guide-nav-card h3 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.guide-nav-card .in-view-badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--accent); display: inline-flex; align-items: center; gap: 4px;
+}
+.guide-nav-card .in-view-badge::before { content: "◆"; font-size: 8px; }
+
+.guide-callout {
+  display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 8px;
+  font-size: 13px; line-height: 1.5; margin: 14px 0;
+}
+.guide-callout svg { flex-shrink: 0; margin-top: 1px; }
+.guide-callout.tip { background: var(--tint-blue-bg); border: 1px solid var(--accent-2); }
+.guide-callout.tip svg { color: var(--accent); }
+.guide-callout.note { background: var(--tint-amber-bg); border: 1px solid var(--amber); }
+.guide-callout.note svg { color: var(--amber); }
+
+.guide-pager {
+  display: flex; justify-content: space-between; gap: 12px; margin-top: 22px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.guide-pager-btn {
+  display: flex; flex-direction: column; gap: 2px; background: none; border: none; cursor: pointer;
+  padding: 4px 2px; font-family: inherit; max-width: 46%; text-align: left;
+}
+.guide-pager-btn.next { align-items: flex-end; text-align: right; margin-left: auto; }
+.guide-pager-label { font-size: 11px; color: var(--text-dim); }
+.guide-pager-title { font-size: 13px; color: var(--accent); font-weight: 600; }
+.guide-pager-btn:hover .guide-pager-title { text-decoration: underline; }
 
 /* Chart node rendering */
 .chart-view { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; }
